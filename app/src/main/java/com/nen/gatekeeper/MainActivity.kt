@@ -7,41 +7,51 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.nen.gatekeeper.data.plugin.Hdhub4u
+import com.nen.gatekeeper.data.repo.MediaRepository
+import com.nen.gatekeeper.ui.home.HomeScreen
+import com.nen.gatekeeper.ui.home.HomeViewModel
 import com.nen.gatekeeper.ui.theme.GateKeeperTheme
 
+/**
+ * Main activity and entry point of the app.
+ *
+ * Sets up full-screen edge-to-edge layout, wires up the repository
+ * to the ViewModel, and loads the home screen.
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Extend app content behind status and navigation bars
         enableEdgeToEdge()
+
         setContent {
+            // Provide the ViewModel with the repository and active media source
+            val viewModel: HomeViewModel = viewModel(
+                factory = viewModelFactory {
+                    initializer {
+                        HomeViewModel(MediaRepository(Hdhub4u()))
+                    }
+                }
+            )
+
+            // Apply app theme and render the main home screen
             GateKeeperTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
+                    HomeScreen(
+                        viewModel = viewModel,
+                        modifier = Modifier.padding(innerPadding),
+                        onSearchClick = {
+                            /* Search screen navigation will be handled here */
+                        }
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    GateKeeperTheme {
-        Greeting("Android")
     }
 }

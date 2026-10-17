@@ -1,5 +1,8 @@
 package com.nen.gatekeeper
 
+import com.nen.gatekeeper.data.plugin.Hdhub4u
+import com.nen.gatekeeper.data.repo.MediaRepository
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 import org.junit.Assert.*
@@ -11,7 +14,10 @@ import org.junit.Assert.*
  */
 class ExampleUnitTest {
     @Test
-    fun addition_isCorrect() {
-        assertEquals(4, 2 + 2)
+    fun testingPlugin() {
+        runBlocking {
+            val result = MediaRepository(Hdhub4u())
+            println(result.getHome())
+        }
     }
 }
