@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -22,10 +24,16 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +44,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -43,12 +53,17 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import coil.compose.AsyncImage
 import com.nen.gatekeeper.data.model.HomeRow
 import com.nen.gatekeeper.ui.components.shimmerEffect
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlin.math.absoluteValue
 
@@ -67,7 +82,9 @@ fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, onSearch
         TopBar(onSearchClick = onSearchClick)
         when (uiState) {
             is HomeUiState.Error -> {
-
+                ErrorState(
+                    (uiState as HomeUiState.Error).message,
+                    loadData = { viewModel.loadHome() })
             }
 
             HomeUiState.Loading -> {
@@ -77,7 +94,14 @@ fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, onSearch
             is HomeUiState.Success -> {
                 HomeContent((uiState as HomeUiState.Success).rows)
             }
+
+            is HomeUiState.Empty -> {
+                EmptyState(
+                    reload = { viewModel.loadHome() }
+                )
+            }
         }
+        BottomBar()
     }
 }
 
@@ -90,7 +114,6 @@ fun TopBar(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -122,10 +145,57 @@ fun TopBar(
     }
 }
 
+@Composable
+fun EmptyState(
+    reload: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "No content found",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onPrimary,
+        )
+        OutlinedButton(
+            onClick = {
+                reload
+            }
+        ) {
+            Text(
+                text = "Retry"
+            )
+        }
+    }
+}
+
 // Placeholder for error UI when loading fails
 @Composable
-fun ErrorState() {
-
+fun ErrorState(message: String, loadData: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onPrimary,
+        )
+        OutlinedButton(
+            onClick = loadData
+        ) {
+            Text(
+                text = "Retry"
+            )
+        }
+    }
 }
 
 // Skeleton placeholder matching the hero carousel and movie cards
@@ -178,22 +248,24 @@ fun HomeContent(rows: List<HomeRow>) {
     val heroCards = rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
     val latestHeroCards by rememberUpdatedState(heroCards)
     val pagerState = rememberPagerState(pageCount = { latestHeroCards.size })
-
+    val lifecycleOwner = LocalLifecycleOwner.current
     // Auto-scroll the hero carousel every 7 seconds
     LaunchedEffect(pagerState) {
-        while (true) {
-            delay(7000)
-            try {
-                if (!pagerState.isScrollInProgress) {
-                    val nextPage = pagerState.currentPage + 1
-                    if (nextPage < latestHeroCards.size) {
-                        pagerState.animateScrollToPage(nextPage)
-                    } else {
-                        pagerState.animateScrollToPage(0)
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(7000)
+                try {
+                    if (!pagerState.isScrollInProgress) {
+                        val nextPage = pagerState.currentPage + 1
+                        if (nextPage < latestHeroCards.size) {
+                            pagerState.animateScrollToPage(nextPage)
+                        } else {
+                            pagerState.animateScrollToPage(0)
+                        }
                     }
-                }
-            } catch (signal: Exception) {
+                } catch (signal: CancellationException) {
 
+                }
             }
         }
     }
@@ -209,9 +281,11 @@ fun HomeContent(rows: List<HomeRow>) {
                 // Slow zoom-in animation when a slide settles
                 val zoom = remember { Animatable(1f) }
                 LaunchedEffect(pagerState.settledPage) {
-                    if (page == pagerState.settledPage) {
-                        zoom.snapTo(1f)
-                        zoom.animateTo(1.10f, animationSpec = tween(7000))
+                    lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        if (page == pagerState.settledPage) {
+                            zoom.snapTo(1f)
+                            zoom.animateTo(1.10f, animationSpec = tween(7000))
+                        }
                     }
                 }
                 val card = heroCards[page]
@@ -254,10 +328,10 @@ fun HomeContent(rows: List<HomeRow>) {
         }
 
         // Category rows with horizontally scrollable movie cards
-        items(items = rows) { card ->
+        items(items = rows) { row ->
             Text(
                 modifier = Modifier.padding(vertical = 10.dp, horizontal = 10.dp),
-                text = card.rowTitle,
+                text = row.rowTitle,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimary,
             )
@@ -266,7 +340,7 @@ fun HomeContent(rows: List<HomeRow>) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Show up to 20 movie posters per row
-                items(card.rowCards.take(20), key = { rowCard -> rowCard.detailedUrl }) { rowCard ->
+                items(row.rowCards.take(20), key = { rowCard -> rowCard.detailedUrl }) { rowCard ->
                     Box(
                         modifier = Modifier
                             .width(130.dp)
@@ -278,8 +352,7 @@ fun HomeContent(rows: List<HomeRow>) {
                             text = rowCard.title,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.align(alignment = Alignment.Center),
-                            overflow = TextOverflow.Clip
+                            modifier = Modifier.align(alignment = Alignment.Center)
                         )
                         AsyncImage(
                             modifier = Modifier.fillMaxSize(),
@@ -288,6 +361,137 @@ fun HomeContent(rows: List<HomeRow>) {
                             contentScale = ContentScale.Crop
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomBar() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .height(70.dp)
+            .clip(shape = RoundedCornerShape(50))
+            .background(
+                brush = Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.15f),
+                        Color.White.copy(alpha = 0.02f)
+                    )
+                )
+            )
+            .border(
+                width = 1.dp, brush = Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.35f),
+                        Color.White.copy(alpha = 0.10f),
+                        Color.Transparent
+                    )
+                ), shape = RoundedCornerShape(50)
+            )
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            IconButton(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                onClick = { /* Home */ }
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = Icons.Filled.Home,
+                        contentDescription = "Home",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Home",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+            IconButton(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                onClick = { /* Discover */ }
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = Icons.Filled.Explore,
+                        contentDescription = "Discover",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Discover",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+            IconButton(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                onClick = { /* Search */ }
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Search",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+            IconButton(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                onClick = { /* Settings */ }
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Settings",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
         }

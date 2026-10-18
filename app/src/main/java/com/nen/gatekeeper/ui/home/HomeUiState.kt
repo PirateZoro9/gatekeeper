@@ -15,4 +15,6 @@ sealed interface HomeUiState {
 
     // Failed to fetch content with an error message
     data class Error(val message: String) : HomeUiState
+
+    data object Empty: HomeUiState
 }

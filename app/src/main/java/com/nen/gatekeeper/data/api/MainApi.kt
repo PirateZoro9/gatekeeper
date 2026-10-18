@@ -9,7 +9,9 @@ import com.nen.gatekeeper.data.model.HomeRow
  * can use different websites without changing any UI code.
  */
 interface MainApi {
-
+    val name: String
+    val mainUrl: String
+    val lang: String
     // Fetches home screen movies in the background
     suspend fun getHome(): List<HomeRow>
 }

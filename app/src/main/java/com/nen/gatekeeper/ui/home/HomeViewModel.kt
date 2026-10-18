@@ -31,14 +31,20 @@ class HomeViewModel(private val mediaRepository: MediaRepository) : ViewModel() 
         viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
             val result = mediaRepository.getHome()
-
             result.fold(
-                onSuccess = {
-                    _uiState.value = HomeUiState.Success(it)
+                onSuccess = { row ->
+                    val cleanedRows = row.filter {
+                        it.rowCards.isNotEmpty()
+                    }
+                    if(cleanedRows.isNotEmpty()){
+                        _uiState.value = HomeUiState.Success(cleanedRows)
+                    }else{
+                        _uiState.value = HomeUiState.Empty
+                    }
                 },
                 onFailure = {
                     _uiState.value = HomeUiState.Error(
-                        it.message ?: "Failed to load content. Please try again later."
+                        "Failed to load content. Please try again later."
                     )
                 }
             )
