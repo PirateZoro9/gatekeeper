@@ -4,17 +4,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.nen.gatekeeper.data.plugin.Hdhub4u
 import com.nen.gatekeeper.data.repo.MediaRepository
+import com.nen.gatekeeper.ui.home.BottomBar
 import com.nen.gatekeeper.ui.home.HomeScreen
 import com.nen.gatekeeper.ui.home.HomeViewModel
+import com.nen.gatekeeper.ui.home.TopBar
 import com.nen.gatekeeper.ui.theme.GateKeeperTheme
 
 /**
@@ -42,13 +41,13 @@ class MainActivity : ComponentActivity() {
 
             // Apply app theme and render the main home screen
             GateKeeperTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    topBar = { TopBar(onSearchClick = {  }) },
+                    bottomBar = { BottomBar() }
+                ) { innerPadding ->
                     HomeScreen(
                         viewModel = viewModel,
-                        modifier = Modifier.padding(innerPadding),
-                        onSearchClick = {
-                            /* Search screen navigation will be handled here */
-                        }
+                        contentPadding = innerPadding
                     )
                 }
             }

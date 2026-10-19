@@ -8,14 +8,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -26,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -40,20 +42,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -61,10 +63,16 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import coil.compose.AsyncImage
+import coil.decode.DataSource
+import coil.request.ImageRequest
 import com.nen.gatekeeper.data.model.HomeRow
 import com.nen.gatekeeper.ui.components.shimmerEffect
+import com.nen.gatekeeper.ui.theme.AppRadius
+import com.nen.gatekeeper.ui.theme.AppSizes
+import com.nen.gatekeeper.ui.theme.AppSpacing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
 /**
@@ -74,12 +82,15 @@ import kotlin.math.absoluteValue
  * to show shimmer loading placeholders or the loaded movie rows.
  */
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, onSearchClick: () -> Unit) {
+fun HomeScreen(
+    viewModel: HomeViewModel,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     Column(
-        modifier = modifier,
+        modifier = modifier.padding(top = contentPadding.calculateTopPadding()),
     ) {
-        TopBar(onSearchClick = onSearchClick)
         when (uiState) {
             is HomeUiState.Error -> {
                 ErrorState(
@@ -92,7 +103,7 @@ fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, onSearch
             }
 
             is HomeUiState.Success -> {
-                HomeContent((uiState as HomeUiState.Success).rows)
+                HomeContent((uiState as HomeUiState.Success).rows, contentPadding = contentPadding)
             }
 
             is HomeUiState.Empty -> {
@@ -101,7 +112,6 @@ fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, onSearch
                 )
             }
         }
-        BottomBar()
     }
 }
 
@@ -112,8 +122,9 @@ fun TopBar(
 ) {
     Row(
         modifier = modifier
+            .statusBarsPadding()
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = AppSpacing.small, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -152,7 +163,7 @@ fun EmptyState(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(vertical = 10.dp),
+            .padding(vertical = AppSpacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -179,7 +190,7 @@ fun ErrorState(message: String, loadData: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(vertical = 10.dp),
+            .padding(vertical = AppSpacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -203,21 +214,21 @@ fun ErrorState(message: String, loadData: () -> Unit) {
 fun LoadingShimmer() {
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.small)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp)
+                .padding(horizontal = AppSpacing.small)
                 .aspectRatio(4f / 5f)
-                .clip(shape = RoundedCornerShape(7.dp))
+                .clip(shape = RoundedCornerShape(AppRadius.hero))
                 .background(color = MaterialTheme.colorScheme.secondaryContainer)
                 .shimmerEffect()
         )
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.45f)
-                .padding(horizontal = 10.dp)
+                .padding(horizontal = AppSpacing.small)
                 .height(30.dp)
                 .clip(shape = RoundedCornerShape(5.dp))
                 .background(color = MaterialTheme.colorScheme.secondaryContainer)
@@ -225,14 +236,14 @@ fun LoadingShimmer() {
         )
         Row(
             modifier = Modifier.padding(horizontal = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
         ) {
             repeat(times = 2) {
                 Box(
                     modifier = Modifier
-                        .width(130.dp)
+                        .width(AppSizes.posterWidth)
                         .aspectRatio(2f / 3f)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(AppRadius.card))
                         .background(MaterialTheme.colorScheme.secondaryContainer)
                         .shimmerEffect()
                 )
@@ -243,7 +254,7 @@ fun LoadingShimmer() {
 
 // Main content displaying the top hero carousel and category rows
 @Composable
-fun HomeContent(rows: List<HomeRow>) {
+fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
     // Pick the first few movies for the featured hero carousel
     val heroCards = rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
     val latestHeroCards by rememberUpdatedState(heroCards)
@@ -272,6 +283,7 @@ fun HomeContent(rows: List<HomeRow>) {
 
 
     LazyColumn(
+        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + AppSpacing.small)
     ) {
         // Featured hero banner carousel at the top
         item {
@@ -289,12 +301,20 @@ fun HomeContent(rows: List<HomeRow>) {
                     }
                 }
                 val card = heroCards[page]
+                val request =
+                    ImageRequest.Builder(LocalContext.current)
+                        .data(card.posterUrl)
+                        .build()
+                val scope = rememberCoroutineScope()
+                val fadeAlpha = remember {
+                    Animatable(0f)
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp)
+                        .padding(horizontal = AppSpacing.small)
                         .aspectRatio(4f / 5f)
-                        .clip(shape = RoundedCornerShape(7.dp))
+                        .clip(shape = RoundedCornerShape(AppRadius.hero))
                         .background(color = MaterialTheme.colorScheme.background)
                         // Scale and fade cards slightly as they swipe away
                         .graphicsLayer {
@@ -318,8 +338,18 @@ fun HomeContent(rows: List<HomeRow>) {
                             .graphicsLayer {
                                 scaleX = zoom.value
                                 scaleY = zoom.value
+                                alpha = fadeAlpha.value
                             },
-                        model = card.posterUrl,
+                        model = request,
+                        onSuccess = { result ->
+                            scope.launch {
+                                if (result.result.dataSource == DataSource.MEMORY_CACHE) {
+                                    fadeAlpha.snapTo(1f)
+                                } else {
+                                    fadeAlpha.animateTo(1f, tween(250))
+                                }
+                            }
+                        },
                         contentDescription = "Hero Poster",
                         contentScale = ContentScale.Crop,
                     )
@@ -330,35 +360,64 @@ fun HomeContent(rows: List<HomeRow>) {
         // Category rows with horizontally scrollable movie cards
         items(items = rows) { row ->
             Text(
-                modifier = Modifier.padding(vertical = 10.dp, horizontal = 10.dp),
+                modifier = Modifier.padding(
+                    vertical = AppSpacing.small,
+                    horizontal = AppSpacing.small
+                ),
                 text = row.rowTitle,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimary,
             )
             LazyRow(
-                modifier = Modifier.padding(horizontal = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.padding(horizontal = AppSpacing.small),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
             ) {
                 // Show up to 20 movie posters per row
                 items(row.rowCards.take(20), key = { rowCard -> rowCard.detailedUrl }) { rowCard ->
-                    Box(
-                        modifier = Modifier
-                            .width(130.dp)
-                            .aspectRatio(2f / 3f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.secondaryContainer)
-                    ) {
+                    val request = ImageRequest.Builder(LocalContext.current)
+                        .data(rowCard.posterUrl)
+                        .build()
+                    val scope = rememberCoroutineScope()
+                    val fadedAlpha = remember {
+                        Animatable(0f)
+                    }
+                    Column() {
+                        Box(
+                            modifier = Modifier
+                                .width(AppSizes.posterWidth)
+                                .aspectRatio(2f / 3f)
+                                .clip(RoundedCornerShape(AppRadius.card))
+                                .background(MaterialTheme.colorScheme.secondaryContainer)
+                        ) {
+                            AsyncImage(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        alpha = fadedAlpha.value
+                                    },
+                                model = request,
+                                onSuccess = { result ->
+                                    scope.launch {
+                                        if (result.result.dataSource == DataSource.MEMORY_CACHE) {
+                                            fadedAlpha.snapTo(1f)
+                                        } else {
+                                            fadedAlpha.animateTo(1f, tween(250))
+                                        }
+                                    }
+                                },
+                                contentDescription = "Row Cards",
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                         Text(
+                            modifier = Modifier
+                                .width(AppSizes.posterWidth)
+                                .padding(horizontal = 1.dp),
                             text = rowCard.title,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.align(alignment = Alignment.Center)
-                        )
-                        AsyncImage(
-                            modifier = Modifier.fillMaxSize(),
-                            model = rowCard.posterUrl,
-                            contentDescription = "Row Cards",
-                            contentScale = ContentScale.Crop
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -371,9 +430,10 @@ fun HomeContent(rows: List<HomeRow>) {
 fun BottomBar() {
     Box(
         modifier = Modifier
+            .navigationBarsPadding()
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(70.dp)
+            .padding(horizontal = AppSpacing.medium, vertical = 5.dp)
+            .height(64.dp)
             .clip(shape = RoundedCornerShape(50))
             .background(
                 brush = Brush.verticalGradient(
@@ -409,7 +469,7 @@ fun BottomBar() {
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(AppSizes.icon),
                         imageVector = Icons.Filled.Home,
                         contentDescription = "Home",
                         tint = MaterialTheme.colorScheme.onSurface
@@ -433,7 +493,7 @@ fun BottomBar() {
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(AppSizes.icon),
                         imageVector = Icons.Filled.Explore,
                         contentDescription = "Discover",
                         tint = MaterialTheme.colorScheme.onSurface
@@ -457,7 +517,7 @@ fun BottomBar() {
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(AppSizes.icon),
                         imageVector = Icons.Filled.Search,
                         contentDescription = "Search",
                         tint = MaterialTheme.colorScheme.onSurface
@@ -481,7 +541,7 @@ fun BottomBar() {
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(AppSizes.icon),
                         imageVector = Icons.Filled.Settings,
                         contentDescription = "Settings",
                         tint = MaterialTheme.colorScheme.onSurface
