@@ -1,6 +1,6 @@
 package com.nen.gatekeeper
 
-import android.os.Bundle
+ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,7 +13,6 @@ import com.nen.gatekeeper.data.repo.MediaRepository
 import com.nen.gatekeeper.ui.home.BottomBar
 import com.nen.gatekeeper.ui.home.HomeScreen
 import com.nen.gatekeeper.ui.home.HomeViewModel
-import com.nen.gatekeeper.ui.home.TopBar
 import com.nen.gatekeeper.ui.theme.GateKeeperTheme
 
 /**
@@ -42,7 +41,6 @@ class MainActivity : ComponentActivity() {
             // Apply app theme and render the main home screen
             GateKeeperTheme {
                 Scaffold(
-                    topBar = { TopBar(onSearchClick = {  }) },
                     bottomBar = { BottomBar() }
                 ) { innerPadding ->
                     HomeScreen(

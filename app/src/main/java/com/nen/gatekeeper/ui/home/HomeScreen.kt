@@ -2,7 +2,6 @@ package com.nen.gatekeeper.ui.home
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -33,16 +30,13 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,29 +44,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import coil.compose.AsyncImage
-import coil.decode.DataSource
-import coil.request.ImageRequest
 import com.nen.gatekeeper.data.model.HomeRow
+import com.nen.gatekeeper.ui.components.PosterImage
 import com.nen.gatekeeper.ui.components.shimmerEffect
 import com.nen.gatekeeper.ui.theme.AppRadius
 import com.nen.gatekeeper.ui.theme.AppSizes
 import com.nen.gatekeeper.ui.theme.AppSpacing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
 /**
@@ -89,7 +74,6 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     Column(
-        modifier = modifier.padding(top = contentPadding.calculateTopPadding()),
     ) {
         when (uiState) {
             is HomeUiState.Error -> {
@@ -111,47 +95,6 @@ fun HomeScreen(
                     reload = { viewModel.loadHome() }
                 )
             }
-        }
-    }
-}
-
-// App header with stylized GATEKEEPER title and search button
-@Composable
-fun TopBar(
-    modifier: Modifier = Modifier, onSearchClick: () -> Unit
-) {
-    Row(
-        modifier = modifier
-            .statusBarsPadding()
-            .fillMaxWidth()
-            .padding(horizontal = AppSpacing.small, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = buildAnnotatedString {
-                withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                    append("GATE")
-                }
-                append(" ")
-                withStyle(SpanStyle(color = MaterialTheme.colorScheme.onBackground)) {
-                    append("KEEPER")
-                }
-            },
-            style = MaterialTheme.typography.titleMedium,
-            letterSpacing = 2.sp
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        OutlinedIconButton(
-            onClick = onSearchClick,
-            colors = IconButtonDefaults.outlinedIconButtonColors(
-                containerColor = Color.White.copy(alpha = 0.05f)
-            ),
-            border = BorderStroke(width = 1.dp, color = Color.White.copy(alpha = 0.08f))
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Search,
-                contentDescription = "Search"
-            )
         }
     }
 }
@@ -219,7 +162,6 @@ fun LoadingShimmer() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppSpacing.small)
                 .aspectRatio(4f / 5f)
                 .clip(shape = RoundedCornerShape(AppRadius.hero))
                 .background(color = MaterialTheme.colorScheme.secondaryContainer)
@@ -235,7 +177,7 @@ fun LoadingShimmer() {
                 .shimmerEffect()
         )
         Row(
-            modifier = Modifier.padding(horizontal = 5.dp),
+            modifier = Modifier.padding(horizontal = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
         ) {
             repeat(times = 2) {
@@ -257,22 +199,20 @@ fun LoadingShimmer() {
 fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
     // Pick the first few movies for the featured hero carousel
     val heroCards = rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
-    val latestHeroCards by rememberUpdatedState(heroCards)
-    val pagerState = rememberPagerState(pageCount = { latestHeroCards.size })
+    val pagerState = rememberPagerState(
+        initialPage = Int.MAX_VALUE / 2 - (Int.MAX_VALUE / 2) % heroCards.size,
+        pageCount = { Int.MAX_VALUE}
+    )
     val lifecycleOwner = LocalLifecycleOwner.current
     // Auto-scroll the hero carousel every 7 seconds
-    LaunchedEffect(pagerState) {
+    LaunchedEffect(heroCards.size) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 delay(7000)
                 try {
                     if (!pagerState.isScrollInProgress) {
                         val nextPage = pagerState.currentPage + 1
-                        if (nextPage < latestHeroCards.size) {
                             pagerState.animateScrollToPage(nextPage)
-                        } else {
-                            pagerState.animateScrollToPage(0)
-                        }
                     }
                 } catch (signal: CancellationException) {
 
@@ -300,19 +240,10 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                         }
                     }
                 }
-                val card = heroCards[page]
-                val request =
-                    ImageRequest.Builder(LocalContext.current)
-                        .data(card.posterUrl)
-                        .build()
-                val scope = rememberCoroutineScope()
-                val fadeAlpha = remember {
-                    Animatable(0f)
-                }
+                val card = heroCards[page % heroCards.size]
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = AppSpacing.small)
                         .aspectRatio(4f / 5f)
                         .clip(shape = RoundedCornerShape(AppRadius.hero))
                         .background(color = MaterialTheme.colorScheme.background)
@@ -321,37 +252,19 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                             val pageOffset =
                                 (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                             val distance = pageOffset.absoluteValue.coerceIn(0f, 1f)
-                            scaleX = 1f - (distance * 0.4f)
-                            scaleY = scaleX
-                            alpha = 1f - (distance * 0.7f)
+                            translationX = pageOffset * size.width
+                            alpha = 1f - distance
                         }
                 ) {
-                    Text(
-                        text = card.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.align(alignment = Alignment.Center)
-                    )
-                    AsyncImage(
+                    PosterImage(
+                        card.posterUrl,
+                        "Hero Poster",
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
                                 scaleX = zoom.value
                                 scaleY = zoom.value
-                                alpha = fadeAlpha.value
-                            },
-                        model = request,
-                        onSuccess = { result ->
-                            scope.launch {
-                                if (result.result.dataSource == DataSource.MEMORY_CACHE) {
-                                    fadeAlpha.snapTo(1f)
-                                } else {
-                                    fadeAlpha.animateTo(1f, tween(250))
-                                }
                             }
-                        },
-                        contentDescription = "Hero Poster",
-                        contentScale = ContentScale.Crop,
                     )
                 }
             }
@@ -374,13 +287,6 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
             ) {
                 // Show up to 20 movie posters per row
                 items(row.rowCards.take(20), key = { rowCard -> rowCard.detailedUrl }) { rowCard ->
-                    val request = ImageRequest.Builder(LocalContext.current)
-                        .data(rowCard.posterUrl)
-                        .build()
-                    val scope = rememberCoroutineScope()
-                    val fadedAlpha = remember {
-                        Animatable(0f)
-                    }
                     Column() {
                         Box(
                             modifier = Modifier
@@ -389,24 +295,11 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                                 .clip(RoundedCornerShape(AppRadius.card))
                                 .background(MaterialTheme.colorScheme.secondaryContainer)
                         ) {
-                            AsyncImage(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer {
-                                        alpha = fadedAlpha.value
-                                    },
-                                model = request,
-                                onSuccess = { result ->
-                                    scope.launch {
-                                        if (result.result.dataSource == DataSource.MEMORY_CACHE) {
-                                            fadedAlpha.snapTo(1f)
-                                        } else {
-                                            fadedAlpha.animateTo(1f, tween(250))
-                                        }
-                                    }
-                                },
-                                contentDescription = "Row Cards",
-                                contentScale = ContentScale.Crop
+                            PosterImage(
+                                rowCard.posterUrl,
+                                "Row Poster",
+                                modifier = Modifier.fillMaxSize(),
+                                true
                             )
                         }
                         Text(
