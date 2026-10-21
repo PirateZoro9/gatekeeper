@@ -3,7 +3,7 @@ package com.nen.gatekeeper.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // Background canvas and layered surfaces
-val Background = Color(0xFF141414)
+val Background = Color(0xFF000000)
 val Surface1 = Color(0xFF1F1F1F)
 val Surface2 = Color(0xFF2A2A2A)
 val Surface3 = Color(0xFF3A3A3A)

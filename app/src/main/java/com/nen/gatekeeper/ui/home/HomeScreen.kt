@@ -1,6 +1,5 @@
 package com.nen.gatekeeper.ui.home
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,8 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -201,8 +199,24 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
     val heroCards = rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
     val pagerState = rememberPagerState(
         initialPage = Int.MAX_VALUE / 2 - (Int.MAX_VALUE / 2) % heroCards.size,
-        pageCount = { Int.MAX_VALUE}
+        pageCount = { Int.MAX_VALUE }
     )
+    val currentPage = pagerState.currentPage
+    val currentPageList = listOf(
+        currentPage - 1.coerceAtLeast(0),
+        currentPage,
+        currentPage + 1.coerceAtMost(pagerState.currentPage - 1)
+    )
+    val visiblePages = currentPageList.distinct().map { page ->
+        val pageOffset = (currentPage - page) + pagerState.currentPageOffsetFraction
+        val visibility = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
+
+        HeroPageLayer(
+            index = page % heroCards.size,
+            visibility = visibility,
+            offset = pageOffset
+        )
+    }.sortedBy { it.visibility }
     val lifecycleOwner = LocalLifecycleOwner.current
     // Auto-scroll the hero carousel every 7 seconds
     LaunchedEffect(heroCards.size) {
@@ -212,7 +226,7 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                 try {
                     if (!pagerState.isScrollInProgress) {
                         val nextPage = pagerState.currentPage + 1
-                            pagerState.animateScrollToPage(nextPage)
+                        pagerState.animateScrollToPage(nextPage, animationSpec = tween(1500))
                     }
                 } catch (signal: CancellationException) {
 
@@ -227,45 +241,41 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
     ) {
         // Featured hero banner carousel at the top
         item {
-            HorizontalPager(
-                state = pagerState
-            ) { page ->
-                // Slow zoom-in animation when a slide settles
-                val zoom = remember { Animatable(1f) }
-                LaunchedEffect(pagerState.settledPage) {
-                    lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        if (page == pagerState.settledPage) {
-                            zoom.snapTo(1f)
-                            zoom.animateTo(1.10f, animationSpec = tween(7000))
-                        }
-                    }
-                }
-                val card = heroCards[page % heroCards.size]
-                Box(
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(4f / 5f)
+                    .clip(shape = RoundedCornerShape(AppRadius.hero))
+            ) {
+
+                HorizontalPager(
+                    state = pagerState,
+                    userScrollEnabled = false,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(4f / 5f)
-                        .clip(shape = RoundedCornerShape(AppRadius.hero))
-                        .background(color = MaterialTheme.colorScheme.background)
-                        // Scale and fade cards slightly as they swipe away
+                        .fillMaxSize()
                         .graphicsLayer {
-                            val pageOffset =
-                                (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                            val distance = pageOffset.absoluteValue.coerceIn(0f, 1f)
-                            translationX = pageOffset * size.width
-                            alpha = 1f - distance
+                            alpha = 0.01f
                         }
-                ) {
-                    PosterImage(
-                        card.posterUrl,
-                        "Hero Poster",
+                ) { page ->
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = zoom.value
-                                scaleY = zoom.value
-                            }
+                            .fillMaxWidth()
+                            .aspectRatio(4f / 5f)
+                            .clip(shape = RoundedCornerShape(AppRadius.hero))
+                            .background(color = MaterialTheme.colorScheme.background)
                     )
+                }
+
+                visiblePages.forEach { layer ->
+                    val posterUrl = heroCards[layer.index].posterUrl
+                    key(layer.index) {
+                        PosterImage(
+                            posterUrl = posterUrl,
+                            contentDescription = "Hero Poster",
+                            modifier = Modifier.fillMaxSize(),
+                            alpha = layer.visibility
+                        )
+                    }
                 }
             }
         }
@@ -299,7 +309,6 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                                 rowCard.posterUrl,
                                 "Row Poster",
                                 modifier = Modifier.fillMaxSize(),
-                                true
                             )
                         }
                         Text(
@@ -450,3 +459,5 @@ fun BottomBar() {
         }
     }
 }
+
+private data class HeroPageLayer(val index: Int, val visibility: Float, val offset: Float)
