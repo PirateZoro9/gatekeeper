@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,12 +22,15 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,13 +39,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -70,6 +78,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues
 ) {
+    // uiState is collected here, when the state changes the screen updates itself
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     Column(
     ) {
@@ -98,6 +107,7 @@ fun HomeScreen(
 }
 
 @Composable
+// when data loaded but not a single content was found, this is shown
 fun EmptyState(
     reload: () -> Unit
 ) {
@@ -201,12 +211,16 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
         initialPage = Int.MAX_VALUE / 2 - (Int.MAX_VALUE / 2) % heroCards.size,
         pageCount = { Int.MAX_VALUE }
     )
+    // all hero layers are built from these pager numbers
     val currentPage = pagerState.currentPage
+    // only 3 pages are needed: previous, current and next
     val currentPageList = listOf(
-        currentPage - 1.coerceAtLeast(0),
+        (currentPage - 1).coerceAtLeast(0),
         currentPage,
-        currentPage + 1.coerceAtMost(pagerState.currentPage - 1)
+        (currentPage + 1).coerceAtMost(pagerState.pageCount - 1)
     )
+    // visibility of each layer (0 = fully gone, 1 = fully visible)
+    // sorted so the most visible layer is drawn on top
     val visiblePages = currentPageList.distinct().map { page ->
         val pageOffset = (currentPage - page) + pagerState.currentPageOffsetFraction
         val visibility = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
@@ -217,6 +231,7 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
             offset = pageOffset
         )
     }.sortedBy { it.visibility }
+    // auto scroll only runs while the screen is in front, so it is tied to the lifecycle
     val lifecycleOwner = LocalLifecycleOwner.current
     // Auto-scroll the hero carousel every 7 seconds
     LaunchedEffect(heroCards.size) {
@@ -241,39 +256,121 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
     ) {
         // Featured hero banner carousel at the top
         item {
+            val bg = MaterialTheme.colorScheme.background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(4f / 5f)
                     .clip(shape = RoundedCornerShape(AppRadius.hero))
+                    // black fade on the bottom 40%, the poster melts into the background
+                    .drawWithCache {
+                        val brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                bg.copy(alpha = 0.40f),
+                                bg.copy(alpha = 0.60f),
+                                bg.copy(alpha = 0.80f),
+                            ),
+                            startY = size.height * 0.6f,
+                            endY = size.height
+                        )
+                        // first the content is drawn, then this fade rect on top of it
+                        onDrawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = brush,
+                                topLeft = Offset(0f, size.height * 0.6f),
+                                Size(size.width, size.height * 0.4f)
+                            )
+                        }
+                    }
             ) {
-
+                // the real pager: the user can swipe the pages himself
                 HorizontalPager(
                     state = pagerState,
-                    userScrollEnabled = false,
+                    userScrollEnabled = true,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            alpha = 0.01f
-                        }
+                        .fillMaxSize(),
+                    // 1 page on both sides stays ready, so its poster is loaded before the swipe reaches it
+                    beyondViewportPageCount = 1
                 ) { page ->
+                    // how far this page is from the settled page (0 = settled, near -1 or 1 = one page away)
+                    val pageOffset =
+                        (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                    // the pager slides the page, this moves it back by the same amount, so the page stays in one place and only fades
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(4f / 5f)
-                            .clip(shape = RoundedCornerShape(AppRadius.hero))
-                            .background(color = MaterialTheme.colorScheme.background)
-                    )
+                        modifier = Modifier.graphicsLayer {
+                            translationX = size.width * pageOffset
+                            alpha = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
+                        }
+                    ) {
+                        // the parallax (0.055) and scale go in through this modifier, PosterImage passes it to the image inside
+                        PosterImage(
+                            posterUrl = heroCards[page % heroCards.size].posterUrl,
+                            contentDescription = "Hero Poster",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    translationX = -pageOffset * size.width * 0.055f
+                                    scaleX = 1.14f
+                                    scaleY = scaleX
+                                }
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp, vertical = 44.dp),
+                            verticalArrangement = Arrangement.Bottom,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = heroCards[page % heroCards.size].title,
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = { /* nothing yet */ },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.onBackground,
+                                    contentColor = MaterialTheme.colorScheme.background
+                                )
+                            ) {
+                                Text(text = "View Details")
+                            }
+                        }
+
+                    }
                 }
 
-                visiblePages.forEach { layer ->
-                    val posterUrl = heroCards[layer.index].posterUrl
-                    key(layer.index) {
-                        PosterImage(
-                            posterUrl = posterUrl,
-                            contentDescription = "Hero Poster",
-                            modifier = Modifier.fillMaxSize(),
-                            alpha = layer.visibility
+                Spacer(modifier = Modifier.height(12.dp))
+                // indicators: one pill for each film, this is outside the layer loop so the pills do not dissolve
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    heroCards.indices.forEach { index ->
+                        // fraction means the visibility of this film, if the layer is not found it is 0
+                        val fraction = visiblePages.firstOrNull {
+                            it.index == index
+                        }?.visibility ?: 0f
+
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(
+                                    MaterialTheme.colorScheme.onBackground
+                                        .copy(alpha = 0.35f + 0.57f * fraction)
+                                )
+                                // this is a formula, not if/else: when visibility grows the pill grows with it
+                                .width(8.dp + 24.dp * fraction)
+                                .height(8.dp)
                         )
                     }
                 }
@@ -329,6 +426,7 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
 }
 
 @Composable
+// the bottom bar is only a look for now, its screens will be made later
 fun BottomBar() {
     Box(
         modifier = Modifier
@@ -460,4 +558,5 @@ fun BottomBar() {
     }
 }
 
+// one layer's info in one place: which film, how visible it is, and its offset
 private data class HeroPageLayer(val index: Int, val visibility: Float, val offset: Float)
