@@ -1,5 +1,6 @@
 package com.nen.gatekeeper.ui.home
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -82,25 +83,30 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     Column(
     ) {
-        when (uiState) {
-            is HomeUiState.Error -> {
-                ErrorState(
-                    (uiState as HomeUiState.Error).message,
-                    loadData = { viewModel.loadHome() })
-            }
+        Crossfade(targetState = uiState, animationSpec = tween(500)) { state ->
+            when (state) {
+                is HomeUiState.Error -> {
+                    ErrorState(
+                        state.message,
+                        loadData = { viewModel.loadHome() })
+                }
 
-            HomeUiState.Loading -> {
-                LoadingShimmer()
-            }
+                is HomeUiState.Loading -> {
+                    LoadingShimmer()
+                }
 
-            is HomeUiState.Success -> {
-                HomeContent((uiState as HomeUiState.Success).rows, contentPadding = contentPadding)
-            }
+                is HomeUiState.Success -> {
+                    HomeContent(
+                        state.rows,
+                        contentPadding = contentPadding
+                    )
+                }
 
-            is HomeUiState.Empty -> {
-                EmptyState(
-                    reload = { viewModel.loadHome() }
-                )
+                is HomeUiState.Empty -> {
+                    EmptyState(
+                        reload = { viewModel.loadHome() }
+                    )
+                }
             }
         }
     }
@@ -124,9 +130,7 @@ fun EmptyState(
             color = MaterialTheme.colorScheme.onPrimary,
         )
         OutlinedButton(
-            onClick = {
-                reload
-            }
+            onClick = reload
         ) {
             Text(
                 text = "Retry"
@@ -219,18 +223,6 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
         currentPage,
         (currentPage + 1).coerceAtMost(pagerState.pageCount - 1)
     )
-    // visibility of each layer (0 = fully gone, 1 = fully visible)
-    // sorted so the most visible layer is drawn on top
-    val visiblePages = currentPageList.distinct().map { page ->
-        val pageOffset = (currentPage - page) + pagerState.currentPageOffsetFraction
-        val visibility = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
-
-        HeroPageLayer(
-            index = page % heroCards.size,
-            visibility = visibility,
-            offset = pageOffset
-        )
-    }.sortedBy { it.visibility }
     // auto scroll only runs while the screen is in front, so it is tied to the lifecycle
     val lifecycleOwner = LocalLifecycleOwner.current
     // Auto-scroll the hero carousel every 7 seconds
@@ -255,35 +247,14 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
         contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + AppSpacing.small)
     ) {
         // Featured hero banner carousel at the top
-        item {
+        item(contentType = "Hero") {
             val bg = MaterialTheme.colorScheme.background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(4f / 5f)
                     .clip(shape = RoundedCornerShape(AppRadius.hero))
-                    // black fade on the bottom 40%, the poster melts into the background
-                    .drawWithCache {
-                        val brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                bg.copy(alpha = 0.40f),
-                                bg.copy(alpha = 0.60f),
-                                bg.copy(alpha = 0.80f),
-                            ),
-                            startY = size.height * 0.6f,
-                            endY = size.height
-                        )
-                        // first the content is drawn, then this fade rect on top of it
-                        onDrawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = brush,
-                                topLeft = Offset(0f, size.height * 0.6f),
-                                Size(size.width, size.height * 0.4f)
-                            )
-                        }
-                    }
+                // black fade on the bottom 40%, the poster melts into the background
             ) {
                 // the real pager: the user can swipe the pages himself
                 HorizontalPager(
@@ -314,6 +285,27 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                                     translationX = -pageOffset * size.width * 0.055f
                                     scaleX = 1.14f
                                     scaleY = scaleX
+                                }
+                                .drawWithCache {
+                                    val brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            bg.copy(alpha = 0.60f),
+                                            bg.copy(alpha = 0.90f),
+                                            bg.copy(alpha = 1.0f),
+                                        ),
+                                        startY = size.height * 0.6f,
+                                        endY = size.height
+                                    )
+                                    // first the content is drawn, then this fade rect on top of it
+                                    onDrawWithContent {
+                                        drawContent()
+                                        drawRect(
+                                            brush = brush,
+                                            topLeft = Offset(0f, size.height * 0.6f),
+                                            Size(size.width, size.height * 0.4f)
+                                        )
+                                    }
                                 }
                         )
                         Column(
@@ -347,7 +339,6 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
                 // indicators: one pill for each film, this is outside the layer loop so the pills do not dissolve
                 Row(
                     modifier = Modifier
@@ -356,11 +347,17 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     heroCards.indices.forEach { index ->
-                        // fraction means the visibility of this film, if the layer is not found it is 0
-                        val fraction = visiblePages.firstOrNull {
-                            it.index == index
-                        }?.visibility ?: 0f
 
+                        val page = currentPageList.firstOrNull {
+                            it % heroCards.size == index
+                        }
+                        val fraction = if (page == null) {
+                            0f
+                        } else {
+                            val pageOffset =
+                                (currentPage - page) + pagerState.currentPageOffsetFraction
+                            (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
+                        }
                         Box(
                             modifier = Modifier
                                 .clip(CircleShape)
@@ -378,7 +375,7 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
         }
 
         // Category rows with horizontally scrollable movie cards
-        items(items = rows) { row ->
+        items(items = rows, contentType = { "Rows" }) { row ->
             Text(
                 modifier = Modifier.padding(
                     vertical = AppSpacing.small,
@@ -557,6 +554,3 @@ fun BottomBar() {
         }
     }
 }
-
-// one layer's info in one place: which film, how visible it is, and its offset
-private data class HeroPageLayer(val index: Int, val visibility: Float, val offset: Float)

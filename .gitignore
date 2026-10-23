@@ -12,3 +12,13 @@
 design/
 
 app/src/main/java/com/nen/gatekeeper/data/plugin/
+app/release/
+
+# signing files
+*.jks
+*.keystore
+keystore.properties
+
+# build outputs
+*.apk
+*.aab
