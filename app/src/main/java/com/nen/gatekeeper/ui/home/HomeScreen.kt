@@ -4,6 +4,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,7 +36,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +58,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.nen.gatekeeper.data.model.HomeRow
+import com.nen.gatekeeper.ui.components.EmptyState
+import com.nen.gatekeeper.ui.components.ErrorState
 import com.nen.gatekeeper.ui.components.PosterImage
 import com.nen.gatekeeper.ui.components.shimmerEffect
 import com.nen.gatekeeper.ui.theme.AppRadius
@@ -77,7 +79,8 @@ import kotlin.math.absoluteValue
 fun HomeScreen(
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
+    onCardClick: (cardUrl: String) -> Unit
 ) {
     // uiState is collected here, when the state changes the screen updates itself
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -86,87 +89,32 @@ fun HomeScreen(
         Crossfade(targetState = uiState, animationSpec = tween(500)) { state ->
             when (state) {
                 is HomeUiState.Error -> {
-                    ErrorState(
-                        state.message,
-                        loadData = { viewModel.loadHome() })
+                    ErrorState(message = state.message, onRetry = { viewModel.loadHome() })
                 }
 
                 is HomeUiState.Loading -> {
-                    LoadingShimmer()
+                    HomeShimmer()
                 }
 
                 is HomeUiState.Success -> {
                     HomeContent(
                         state.rows,
-                        contentPadding = contentPadding
+                        contentPadding = contentPadding,
+                        onCardClick = onCardClick
                     )
                 }
 
                 is HomeUiState.Empty -> {
-                    EmptyState(
-                        reload = { viewModel.loadHome() }
-                    )
+                    EmptyState()
                 }
             }
         }
     }
 }
 
-@Composable
-// when data loaded but not a single content was found, this is shown
-fun EmptyState(
-    reload: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(vertical = AppSpacing.small),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "No content found",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimary,
-        )
-        OutlinedButton(
-            onClick = reload
-        ) {
-            Text(
-                text = "Retry"
-            )
-        }
-    }
-}
-
-// Placeholder for error UI when loading fails
-@Composable
-fun ErrorState(message: String, loadData: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(vertical = AppSpacing.small),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimary,
-        )
-        OutlinedButton(
-            onClick = loadData
-        ) {
-            Text(
-                text = "Retry"
-            )
-        }
-    }
-}
-
 // Skeleton placeholder matching the hero carousel and movie cards
 @Composable
-fun LoadingShimmer() {
+fun HomeShimmer() {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.small)
@@ -208,7 +156,11 @@ fun LoadingShimmer() {
 
 // Main content displaying the top hero carousel and category rows
 @Composable
-fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
+fun HomeContent(
+    rows: List<HomeRow>,
+    contentPadding: PaddingValues,
+    onCardClick: (cardUrl: String) -> Unit
+) {
     // Pick the first few movies for the featured hero carousel
     val heroCards = rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
     val pagerState = rememberPagerState(
@@ -263,21 +215,23 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                     modifier = Modifier
                         .fillMaxSize(),
                     // 1 page on both sides stays ready, so its poster is loaded before the swipe reaches it
-                    beyondViewportPageCount = 1
                 ) { page ->
+                    val posterUrl = heroCards[page % heroCards.size].posterUrl
+                    val detailedUrl = heroCards[page % heroCards.size].detailedUrl
                     // how far this page is from the settled page (0 = settled, near -1 or 1 = one page away)
                     val pageOffset =
                         (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                     // the pager slides the page, this moves it back by the same amount, so the page stays in one place and only fades
                     Box(
-                        modifier = Modifier.graphicsLayer {
-                            translationX = size.width * pageOffset
-                            alpha = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
-                        }
+                        modifier = Modifier
+                            .graphicsLayer {
+                                translationX = size.width * pageOffset
+                                alpha = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
+                            }
                     ) {
                         // the parallax (0.055) and scale go in through this modifier, PosterImage passes it to the image inside
                         PosterImage(
-                            posterUrl = heroCards[page % heroCards.size].posterUrl,
+                            posterUrl = posterUrl,
                             contentDescription = "Hero Poster",
                             modifier = Modifier
                                 .fillMaxSize()
@@ -326,7 +280,7 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
-                                onClick = { /* nothing yet */ },
+                                onClick = { onCardClick(detailedUrl) },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.onBackground,
                                     contentColor = MaterialTheme.colorScheme.background
@@ -398,6 +352,7 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
                                 .aspectRatio(2f / 3f)
                                 .clip(RoundedCornerShape(AppRadius.card))
                                 .background(MaterialTheme.colorScheme.secondaryContainer)
+                                .clickable(onClick = { onCardClick(rowCard.detailedUrl) })
                         ) {
                             PosterImage(
                                 rowCard.posterUrl,
@@ -424,7 +379,7 @@ fun HomeContent(rows: List<HomeRow>, contentPadding: PaddingValues) {
 
 @Composable
 // the bottom bar is only a look for now, its screens will be made later
-fun BottomBar() {
+fun HomeBottomBar() {
     Box(
         modifier = Modifier
             .navigationBarsPadding()

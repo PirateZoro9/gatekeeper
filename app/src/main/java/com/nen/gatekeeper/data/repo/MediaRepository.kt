@@ -2,6 +2,7 @@ package com.nen.gatekeeper.data.repo
 
 import com.nen.gatekeeper.data.api.MainApi
 import com.nen.gatekeeper.data.model.HomeRow
+import com.nen.gatekeeper.data.model.MediaDetails
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,6 +35,22 @@ class MediaRepository(private val api: MainApi) {
             throw e
         } catch (e: Exception) {
             // Return failure safely instead of crashing the app
+            Result.failure(e)
+        }
+    }
+
+    // Fetches media details safely on a background thread
+    suspend fun getDetails(url: String): Result<MediaDetails> = withContext(Dispatchers.IO) {
+        if (url.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("URL cannot be blank"))
+        }
+        try {
+            val details = api.getDetails(url)
+            Result.success(details)
+        } catch (e: CancellationException) {
+            // Re-throw so coroutine cancellation works properly
+            throw e
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

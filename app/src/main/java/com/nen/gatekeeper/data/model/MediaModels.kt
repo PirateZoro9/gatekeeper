@@ -8,7 +8,7 @@ package com.nen.gatekeeper.data.model
  */
 
 // Represents a single movie or show card
-data class MediaDetails(
+data class CardDetails(
     val title: String,              // Movie or show title
     val posterUrl: String? = null,  // Image URL for the poster (optional if missing)
     val detailedUrl: String         // Web link to open the movie details page
@@ -17,5 +17,13 @@ data class MediaDetails(
 // Represents a horizontal row of movies on the home screen
 data class HomeRow(
     val rowTitle: String,              // Section heading (e.g., "Latest Releases")
-    val rowCards: List<MediaDetails>   // List of movie cards inside this row
+    val rowCards: List<CardDetails>   // List of movie cards inside this row
+)
+
+data class MediaDetails(
+    val title: String,
+    val posterUrl: String? = null,
+    val genres: List<String> = emptyList(),
+    val rating: String? = null,
+    val quality: List<String> = emptyList()
 )

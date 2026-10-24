@@ -1,6 +1,7 @@
 package com.nen.gatekeeper.data.api
 
 import com.nen.gatekeeper.data.model.HomeRow
+import com.nen.gatekeeper.data.model.MediaDetails
 
 /**
  * Standard template for all media sources.
@@ -12,6 +13,8 @@ interface MainApi {
     val name: String
     val mainUrl: String
     val lang: String
+
     // Fetches home screen movies in the background
     suspend fun getHome(): List<HomeRow>
+    suspend fun getDetails(url: String): MediaDetails
 }

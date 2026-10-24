@@ -17,7 +17,7 @@ class ExampleUnitTest {
     fun testingPlugin() {
         runBlocking {
             val result = MediaRepository(Hdhub4u())
-            println(result.getHome())
+            println(result.getDetails("https://new8.hdhub4u.cl/udta-teer-2026-hindi-line-hdtc-full-movie/"))
         }
     }
 }
