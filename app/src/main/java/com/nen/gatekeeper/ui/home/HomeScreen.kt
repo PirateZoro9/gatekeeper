@@ -49,6 +49,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,6 +58,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.nen.gatekeeper.data.model.CardDetails
 import com.nen.gatekeeper.data.model.HomeRow
 import com.nen.gatekeeper.ui.components.EmptyState
 import com.nen.gatekeeper.ui.components.ErrorState
@@ -85,6 +87,7 @@ fun HomeScreen(
     // uiState is collected here, when the state changes the screen updates itself
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     Column(
+        modifier = modifier
     ) {
         Crossfade(targetState = uiState, animationSpec = tween(500)) { state ->
             when (state) {
@@ -98,7 +101,7 @@ fun HomeScreen(
 
                 is HomeUiState.Success -> {
                     HomeContent(
-                        state.rows,
+                        rows = state.rows,
                         contentPadding = contentPadding,
                         onCardClick = onCardClick
                     )
@@ -163,6 +166,37 @@ fun HomeContent(
 ) {
     // Pick the first few movies for the featured hero carousel
     val heroCards = rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
+
+    LazyColumn(
+        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + AppSpacing.small)
+    ) {
+        // Featured hero banner carousel at the top
+        item(contentType = "Hero") {
+            HeroCarousel(
+                heroCards = heroCards,
+                onCardClick = onCardClick
+            )
+        }
+
+        // Category rows with horizontally scrollable movie cards
+        items(items = rows, contentType = { "Rows" }) { row ->
+            HomeCategoryRow(
+                row = row,
+                onCardClick = onCardClick
+            )
+        }
+    }
+}
+
+// Featured hero banner carousel with parallax effect, auto-scroll and animated indicators
+@Composable
+fun HeroCarousel(
+    heroCards: List<CardDetails>,
+    onCardClick: (cardUrl: String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (heroCards.isEmpty()) return
+
     val pagerState = rememberPagerState(
         initialPage = Int.MAX_VALUE / 2 - (Int.MAX_VALUE / 2) % heroCards.size,
         pageCount = { Int.MAX_VALUE }
@@ -194,186 +228,196 @@ fun HomeContent(
         }
     }
 
-
-    LazyColumn(
-        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + AppSpacing.small)
+    val bg = MaterialTheme.colorScheme.background
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(4f / 5f)
+            .clip(shape = RoundedCornerShape(AppRadius.hero))
+        // black fade on the bottom 40%, the poster melts into the background
     ) {
-        // Featured hero banner carousel at the top
-        item(contentType = "Hero") {
-            val bg = MaterialTheme.colorScheme.background
+        // the real pager: the user can swipe the pages himself
+        HorizontalPager(
+            state = pagerState,
+            userScrollEnabled = true,
+            modifier = Modifier.fillMaxSize(),
+            // 1 page on both sides stays ready, so its poster is loaded before the swipe reaches it
+        ) { page ->
+            val posterUrl = heroCards[page % heroCards.size].posterUrl
+            val detailedUrl = heroCards[page % heroCards.size].detailedUrl
+            // how far this page is from the settled page (0 = settled, near -1 or 1 = one page away)
+            val pageOffset =
+                (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+            // the pager slides the page, this moves it back by the same amount, so the page stays in one place and only fades
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(4f / 5f)
-                    .clip(shape = RoundedCornerShape(AppRadius.hero))
-                // black fade on the bottom 40%, the poster melts into the background
+                    .graphicsLayer {
+                        translationX = size.width * pageOffset
+                        alpha = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
+                    }
             ) {
-                // the real pager: the user can swipe the pages himself
-                HorizontalPager(
-                    state = pagerState,
-                    userScrollEnabled = true,
+                // the parallax (0.055) and scale go in through this modifier, PosterImage passes it to the image inside
+                PosterImage(
+                    posterUrl = posterUrl,
+                    contentDescription = "Hero Poster",
                     modifier = Modifier
-                        .fillMaxSize(),
-                    // 1 page on both sides stays ready, so its poster is loaded before the swipe reaches it
-                ) { page ->
-                    val posterUrl = heroCards[page % heroCards.size].posterUrl
-                    val detailedUrl = heroCards[page % heroCards.size].detailedUrl
-                    // how far this page is from the settled page (0 = settled, near -1 or 1 = one page away)
-                    val pageOffset =
-                        (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                    // the pager slides the page, this moves it back by the same amount, so the page stays in one place and only fades
-                    Box(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                translationX = size.width * pageOffset
-                                alpha = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
-                            }
-                    ) {
-                        // the parallax (0.055) and scale go in through this modifier, PosterImage passes it to the image inside
-                        PosterImage(
-                            posterUrl = posterUrl,
-                            contentDescription = "Hero Poster",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    translationX = -pageOffset * size.width * 0.055f
-                                    scaleX = 1.14f
-                                    scaleY = scaleX
-                                }
-                                .drawWithCache {
-                                    val brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            bg.copy(alpha = 0.60f),
-                                            bg.copy(alpha = 0.90f),
-                                            bg.copy(alpha = 1.0f),
-                                        ),
-                                        startY = size.height * 0.6f,
-                                        endY = size.height
-                                    )
-                                    // first the content is drawn, then this fade rect on top of it
-                                    onDrawWithContent {
-                                        drawContent()
-                                        drawRect(
-                                            brush = brush,
-                                            topLeft = Offset(0f, size.height * 0.6f),
-                                            Size(size.width, size.height * 0.4f)
-                                        )
-                                    }
-                                }
-                        )
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 24.dp, vertical = 44.dp),
-                            verticalArrangement = Arrangement.Bottom,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = heroCards[page % heroCards.size].title,
-                                style = MaterialTheme.typography.displaySmall,
-                                fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            translationX = -pageOffset * size.width * 0.055f
+                            scaleX = 1.14f
+                            scaleY = scaleX
+                        }
+                        .drawWithCache {
+                            val brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    bg.copy(alpha = 0.60f),
+                                    bg.copy(alpha = 0.90f),
+                                    bg.copy(alpha = 1.0f),
+                                ),
+                                startY = size.height * 0.6f,
+                                endY = size.height
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = { onCardClick(detailedUrl) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.onBackground,
-                                    contentColor = MaterialTheme.colorScheme.background
+                            // first the content is drawn, then this fade rect on top of it
+                            onDrawWithContent {
+                                drawContent()
+                                drawRect(
+                                    brush = brush,
+                                    topLeft = Offset(0f, size.height * 0.6f),
+                                    Size(size.width, size.height * 0.4f)
                                 )
-                            ) {
-                                Text(text = "View Details")
                             }
                         }
-
-                    }
-                }
-
-                // indicators: one pill for each film, this is outside the layer loop so the pills do not dissolve
-                Row(
+                )
+                Column(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp, vertical = 44.dp),
+                    verticalArrangement = Arrangement.Bottom,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    heroCards.indices.forEach { index ->
-
-                        val page = currentPageList.firstOrNull {
-                            it % heroCards.size == index
-                        }
-                        val fraction = if (page == null) {
-                            0f
-                        } else {
-                            val pageOffset =
-                                (currentPage - page) + pagerState.currentPageOffsetFraction
-                            (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
-                        }
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(
-                                    MaterialTheme.colorScheme.onBackground
-                                        .copy(alpha = 0.35f + 0.57f * fraction)
-                                )
-                                // this is a formula, not if/else: when visibility grows the pill grows with it
-                                .width(8.dp + 24.dp * fraction)
-                                .height(8.dp)
+                    Text(
+                        text = heroCards[page % heroCards.size].title,
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = { onCardClick(detailedUrl) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.onBackground,
+                            contentColor = MaterialTheme.colorScheme.background
                         )
+                    ) {
+                        Text(text = "View Details")
                     }
                 }
+
             }
         }
 
-        // Category rows with horizontally scrollable movie cards
-        items(items = rows, contentType = { "Rows" }) { row ->
-            Text(
-                modifier = Modifier.padding(
-                    vertical = AppSpacing.small,
-                    horizontal = AppSpacing.small
-                ),
-                text = row.rowTitle,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimary,
+        // indicators: one pill for each film, this is outside the layer loop so the pills do not dissolve
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            heroCards.indices.forEach { index ->
+                val page = currentPageList.firstOrNull {
+                    it % heroCards.size == index
+                }
+                val fraction = if (page == null) {
+                    0f
+                } else {
+                    val pageOffset =
+                        (currentPage - page) + pagerState.currentPageOffsetFraction
+                    (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(
+                            MaterialTheme.colorScheme.onBackground
+                                .copy(alpha = 0.35f + 0.57f * fraction)
+                        )
+                        // this is a formula, not if/else: when visibility grows the pill grows with it
+                        .width(8.dp + 24.dp * fraction)
+                        .height(8.dp)
+                )
+            }
+        }
+    }
+}
+
+// Category row with horizontally scrollable movie cards
+@Composable
+fun HomeCategoryRow(
+    row: HomeRow,
+    onCardClick: (cardUrl: String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            modifier = Modifier.padding(
+                vertical = AppSpacing.small,
+                horizontal = AppSpacing.small
+            ),
+            text = row.rowTitle,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onPrimary,
+        )
+        LazyRow(
+            modifier = Modifier.padding(horizontal = AppSpacing.small),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
+        ) {
+            // Show up to 20 movie posters per row
+            items(row.rowCards.take(20), key = { rowCard -> rowCard.detailedUrl }) { rowCard ->
+                MovieCard(
+                    card = rowCard,
+                    onClick = { onCardClick(rowCard.detailedUrl) }
+                )
+            }
+        }
+    }
+}
+
+// Reusable single movie card component
+@Composable
+fun MovieCard(
+    card: CardDetails,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .width(AppSizes.posterWidth)
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(AppRadius.card))
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .clickable(onClick = onClick)
+        ) {
+            PosterImage(
+                posterUrl = card.posterUrl,
+                contentDescription = "Row Poster",
+                modifier = Modifier.fillMaxSize(),
             )
-            LazyRow(
-                modifier = Modifier.padding(horizontal = AppSpacing.small),
-                horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
-            ) {
-                // Show up to 20 movie posters per row
-                items(row.rowCards.take(20), key = { rowCard -> rowCard.detailedUrl }) { rowCard ->
-                    Column() {
-                        Box(
-                            modifier = Modifier
-                                .width(AppSizes.posterWidth)
-                                .aspectRatio(2f / 3f)
-                                .clip(RoundedCornerShape(AppRadius.card))
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                                .clickable(onClick = { onCardClick(rowCard.detailedUrl) })
-                        ) {
-                            PosterImage(
-                                rowCard.posterUrl,
-                                "Row Poster",
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                        Text(
-                            modifier = Modifier
-                                .width(AppSizes.posterWidth)
-                                .padding(horizontal = 1.dp),
-                            text = rowCard.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
         }
+        Text(
+            modifier = Modifier
+                .width(AppSizes.posterWidth)
+                .padding(horizontal = 1.dp),
+            text = card.title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -410,102 +454,62 @@ fun HomeBottomBar() {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxSize()
         ) {
-            IconButton(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                onClick = { /* Home */ }
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        modifier = Modifier.size(AppSizes.icon),
-                        imageVector = Icons.Filled.Home,
-                        contentDescription = "Home",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Home",
-                        maxLines = 1,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            IconButton(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                onClick = { /* Discover */ }
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        modifier = Modifier.size(AppSizes.icon),
-                        imageVector = Icons.Filled.Explore,
-                        contentDescription = "Discover",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Discover",
-                        maxLines = 1,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            IconButton(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                onClick = { /* Search */ }
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        modifier = Modifier.size(AppSizes.icon),
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Search",
-                        maxLines = 1,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            IconButton(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                onClick = { /* Settings */ }
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        modifier = Modifier.size(AppSizes.icon),
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Settings",
-                        maxLines = 1,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
+            BottomBarItem(
+                icon = Icons.Filled.Home,
+                label = "Home",
+                onClick = { /* Home */ },
+                modifier = Modifier.weight(1f)
+            )
+            BottomBarItem(
+                icon = Icons.Filled.Explore,
+                label = "Discover",
+                onClick = { /* Discover */ },
+                modifier = Modifier.weight(1f)
+            )
+            BottomBarItem(
+                icon = Icons.Filled.Search,
+                label = "Search",
+                onClick = { /* Search */ },
+                modifier = Modifier.weight(1f)
+            )
+            BottomBarItem(
+                icon = Icons.Filled.Settings,
+                label = "Settings",
+                onClick = { /* Settings */ },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+// Reusable navigation bar item
+@Composable
+private fun BottomBarItem(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        modifier = modifier.height(56.dp),
+        onClick = onClick
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                modifier = Modifier.size(AppSizes.icon),
+                imageVector = icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = label,
+                maxLines = 1,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }

@@ -4,17 +4,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.material3.Scaffold
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.nen.gatekeeper.data.plugin.Hdhub4u
+import com.nen.gatekeeper.data.plugin.FourKHDHub
 import com.nen.gatekeeper.data.repo.MediaRepository
 import com.nen.gatekeeper.ui.detail.DetailScreen
-import com.nen.gatekeeper.ui.detail.DetailTopBar
 import com.nen.gatekeeper.ui.detail.DetailViewModel
 import com.nen.gatekeeper.ui.home.HomeBottomBar
 import com.nen.gatekeeper.ui.home.HomeScreen
@@ -40,7 +45,7 @@ class MainActivity : ComponentActivity() {
             val viewModel: HomeViewModel = viewModel(
                 factory = viewModelFactory {
                     initializer {
-                        HomeViewModel(MediaRepository(Hdhub4u()))
+                        HomeViewModel(MediaRepository(FourKHDHub()))
                     }
                 }
             )
@@ -54,14 +59,41 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { innerPadding ->
                     NavDisplay(
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(500)) togetherWith fadeOut(
+                                animationSpec = tween(
+                                    500
+                                )
+                            )
+                        },
+                        popTransitionSpec = {
+                            fadeIn(animationSpec = tween(500)) togetherWith fadeOut(
+                                animationSpec = tween(
+                                    500
+                                )
+                            )
+                        },
+                        predictivePopTransitionSpec = {
+                            fadeIn(animationSpec = tween(500)) togetherWith fadeOut(
+                                animationSpec = tween(
+                                    500
+                                )
+                            )
+                        },
                         backStack = backStack,
+                        entryDecorators = listOf(
+                            rememberSaveableStateHolderNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator()
+                        ),
                         entryProvider = entryProvider {
                             entry<Home> {
                                 HomeScreen(
                                     viewModel = viewModel,
                                     contentPadding = innerPadding,
                                     onCardClick = { cardUrl ->
-                                        backStack.add(Detail(cardUrl))
+                                        if (backStack.lastOrNull() !is Detail) {
+                                            backStack.add(Detail(cardUrl))
+                                        }
                                     }
                                 )
                             }
@@ -70,7 +102,7 @@ class MainActivity : ComponentActivity() {
                                     factory = viewModelFactory {
                                         initializer {
                                             DetailViewModel(
-                                                MediaRepository(Hdhub4u()),
+                                                MediaRepository(FourKHDHub()),
                                                 detailUrl.detailUrl
                                             )
                                         }
