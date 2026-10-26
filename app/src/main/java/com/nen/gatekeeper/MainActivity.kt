@@ -53,10 +53,6 @@ class MainActivity : ComponentActivity() {
             // Apply app theme and render the main home screen
             GateKeeperTheme {
                 Scaffold(
-                    bottomBar = {
-                        if (backStack.lastOrNull() is Home)
-                            HomeBottomBar()
-                    }
                 ) { innerPadding ->
                     NavDisplay(
                         transitionSpec = {

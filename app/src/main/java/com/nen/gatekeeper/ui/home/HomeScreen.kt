@@ -1,6 +1,7 @@
 package com.nen.gatekeeper.ui.home
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -54,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -166,25 +169,33 @@ fun HomeContent(
 ) {
     // Pick the first few movies for the featured hero carousel
     val heroCards = rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
-
-    LazyColumn(
-        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + AppSpacing.small)
+    val listState = rememberLazyListState()
+    val isScrolling = listState.isScrollInProgress
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Featured hero banner carousel at the top
-        item(contentType = "Hero") {
-            HeroCarousel(
-                heroCards = heroCards,
-                onCardClick = onCardClick
-            )
-        }
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 100.dp),
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.medium)
+        ) {
+            // Featured hero banner carousel at the top
+            item(contentType = "Hero") {
+                HeroCarousel(
+                    heroCards = heroCards,
+                    onCardClick = onCardClick
+                )
+            }
 
-        // Category rows with horizontally scrollable movie cards
-        items(items = rows, contentType = { "Rows" }) { row ->
-            HomeCategoryRow(
-                row = row,
-                onCardClick = onCardClick
-            )
+            // Category rows with horizontally scrollable movie cards
+            items(items = rows, contentType = { "Rows" }, key = { it.rowTitle }) { row ->
+                HomeCategoryRow(
+                    row = row,
+                    onCardClick = onCardClick
+                )
+            }
         }
+        HomeBottomBar(isScrolling = isScrolling, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -243,8 +254,8 @@ fun HeroCarousel(
             modifier = Modifier.fillMaxSize(),
             // 1 page on both sides stays ready, so its poster is loaded before the swipe reaches it
         ) { page ->
-            val posterUrl = heroCards[page % heroCards.size].posterUrl
-            val detailedUrl = heroCards[page % heroCards.size].detailedUrl
+            val hero = heroCards[page % heroCards.size]
+            val hasMeta = hero.releaseYear != null || hero.rating != null || hero.qualityTag != null
             // how far this page is from the settled page (0 = settled, near -1 or 1 = one page away)
             val pageOffset =
                 (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
@@ -256,9 +267,10 @@ fun HeroCarousel(
                         alpha = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
                     }
             ) {
+
                 // the parallax (0.055) and scale go in through this modifier, PosterImage passes it to the image inside
                 PosterImage(
-                    posterUrl = posterUrl,
+                    posterUrl = hero.posterUrl,
                     contentDescription = "Hero Poster",
                     modifier = Modifier
                         .fillMaxSize()
@@ -297,7 +309,7 @@ fun HeroCarousel(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = heroCards[page % heroCards.size].title,
+                        text = hero.title,
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onBackground,
@@ -305,9 +317,31 @@ fun HeroCarousel(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (hasMeta) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(
+                                8.dp,
+                                Alignment.CenterHorizontally
+                            )
+                        ) {
+                            hero.releaseYear?.let {
+                                MetaBadge(it)
+                            }
+                            hero.rating?.let {
+                                MetaBadge(it)
+
+                            }
+                            hero.qualityTag?.let {
+                                MetaBadge(it)
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
-                        onClick = { onCardClick(detailedUrl) },
+                        onClick = { onCardClick(hero.detailedUrl) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.onBackground,
                             contentColor = MaterialTheme.colorScheme.background
@@ -316,7 +350,6 @@ fun HeroCarousel(
                         Text(text = "View Details")
                     }
                 }
-
             }
         }
 
@@ -407,6 +440,19 @@ fun MovieCard(
                 contentDescription = "Row Poster",
                 modifier = Modifier.fillMaxSize(),
             )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(6.dp),
+            ) {
+                card.qualityTag?.let {
+                    MetaBadge(it)
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                card.rating?.let {
+                    MetaBadge(it)
+                }
+            }
         }
         Text(
             modifier = Modifier
@@ -415,17 +461,37 @@ fun MovieCard(
             text = card.title,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onPrimary,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+        card.releaseYear?.let { year ->
+            Text(
+                text = year,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(horizontal = 1.dp)
+            )
+        }
     }
 }
 
 @Composable
 // the bottom bar is only a look for now, its screens will be made later
-fun HomeBottomBar() {
+fun HomeBottomBar(
+    isScrolling: Boolean,
+    modifier: Modifier
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isScrolling) 0.85f else 1f,
+        label = "bottomBarScale"
+    )
     Box(
-        modifier = Modifier
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .navigationBarsPadding()
             .fillMaxWidth()
             .padding(horizontal = AppSpacing.medium, vertical = 5.dp)
@@ -434,16 +500,16 @@ fun HomeBottomBar() {
             .background(
                 brush = Brush.verticalGradient(
                     listOf(
-                        Color.White.copy(alpha = 0.15f),
-                        Color.White.copy(alpha = 0.02f)
+                        Color.White.copy(alpha = 0.10f),
+                        Color.Black.copy(alpha = 0.40f)
                     )
                 )
             )
             .border(
                 width = 1.dp, brush = Brush.verticalGradient(
                     listOf(
-                        Color.White.copy(alpha = 0.35f),
-                        Color.White.copy(alpha = 0.10f),
+                        Color.White.copy(alpha = 0.20f),
+                        Color.White.copy(alpha = 0.05f),
                         Color.Transparent
                     )
                 ), shape = RoundedCornerShape(50)
@@ -511,5 +577,31 @@ private fun BottomBarItem(
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
+    }
+}
+
+@Composable
+fun MetaBadge(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color.White.copy(alpha = 0.11f))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.20f),
+                shape = RoundedCornerShape(4.dp)
+            )
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            letterSpacing = 0.5.sp
+        )
     }
 }

@@ -9,15 +9,19 @@ package com.nen.gatekeeper.data.model
 
 // Represents a single movie or show card
 data class CardDetails(
-    val title: String,              // Movie or show title
-    val posterUrl: String? = null,  // Image URL for the poster (optional if missing)
-    val detailedUrl: String         // Web link to open the movie details page
+    val title: String,
+    val posterUrl: String? = null,
+    val detailedUrl: String,
+    val qualityTag: String? = null,
+    val rating: String? = null,
+    val releaseYear: String? = null
 )
 
 // Represents a horizontal row of movies on the home screen
 data class HomeRow(
     val rowTitle: String,              // Section heading (e.g., "Latest Releases")
-    val rowCards: List<CardDetails>   // List of movie cards inside this row
+    val rowCards: List<CardDetails>,   // List of movie cards inside this row
+    val categoryUrl: String? = null    // Web link or path for "See All" full category view
 )
 
 // Main detailed page model (Supports both Movies and Series)

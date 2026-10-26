@@ -6,6 +6,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,9 +26,12 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -75,34 +80,33 @@ fun DetailScreen(
     contentPadding: PaddingValues
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = MaterialTheme.colorScheme.background)
+        ) {
+            Crossfade(targetState = uiState, animationSpec = tween(500)) { state ->
+                when (state) {
+                    is DetailUiState.Error -> {
+                        ErrorState(message = state.message, onRetry = { viewModel.loadDetails() })
+                    }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color = MaterialTheme.colorScheme.background)
-    ) {
-        Crossfade(targetState = uiState, animationSpec = tween(500)) { state ->
-            when (state) {
-                is DetailUiState.Error -> {
-                    ErrorState(message = state.message, onRetry = { viewModel.loadDetails() })
-                }
+                    is DetailUiState.Empty -> {
+                        EmptyState()
+                    }
 
-                is DetailUiState.Empty -> {
-                    EmptyState()
-                }
+                    is DetailUiState.Success -> {
+                        DetailContent(state.detailPage)
+                    }
 
-                is DetailUiState.Success -> {
-                    DetailContent(state.detailPage)
-                }
-
-                is DetailUiState.Loading -> {
-                    DetailShimmer()
+                    is DetailUiState.Loading -> {
+                        DetailShimmer()
+                    }
                 }
             }
-
-            // Floating Back Button over hero image
-            DetailTopBar(onBackClick = onBackClick)
         }
+        DetailTopBar(onBackClick = onBackClick)
     }
 }
 
@@ -181,11 +185,16 @@ fun DetailTopBar(onBackClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .padding(horizontal = 14.dp)
     ) {
         OutlinedIconButton(
+            modifier = Modifier
+                .clip(shape = RoundedCornerShape(50))
+                .background(
+                    color = Color.Black.copy(alpha = 0.40f)
+                )
+                .size(40.dp),
             onClick = onBackClick,
-            modifier = Modifier.size(40.dp)
         ) {
             Icon(
                 imageVector = Icons.Filled.ArrowBackIosNew,
@@ -201,28 +210,33 @@ fun DetailContent(
     mediaDetail: MediaDetails
 ) {
     LazyColumn {
-        item(mediaDetail.posterUrl) {
-            // Hero poster with gradient, title, rating badge, and play button
+        // Hero poster with gradient, title, rating badge, and play button
+        item {
             DetailHeroHeader(
                 posterUrl = mediaDetail.posterUrl,
                 title = mediaDetail.title,
                 rating = mediaDetail.rating,
                 onPlayClick = { /* Play clicked */ }
             )
+        }
 
-            // Genre badges flow row
-            DetailGenreChips(genres = mediaDetail.genres)
+        // Genre badges flow row
+        item { DetailGenreChips(genres = mediaDetail.genres) }
 
-            // Synopsis text with smooth expand / collapse animation
+        // Synopsis text with smooth expand / collapse animation
+        item {
             mediaDetail.synopsis?.let { synopsisText ->
                 DetailSynopsisSection(synopsis = synopsisText)
             }
+        }
 
-            // Series Section: Seasons & Episodes (for web series)
+        // Series Section: Seasons & Episodes (for web series)
+        item {
             if (mediaDetail.isSeries) {
                 // Seasons and episodes will be rendered here
                 DetailSeriesSection(
-                    mediaDetail.seasons
+                    mediaDetail.seasons,
+                    posterUrl = mediaDetail.posterUrl
                 )
             }
         }
@@ -438,12 +452,100 @@ fun DetailSynopsisSection(
 @Composable
 fun DetailSeriesSection(
     seasons: List<Season>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    posterUrl: String?
 ) {
-    LazyRow() {
-        item {
-            seasons.map {
-
+    var selectedSeason by remember {
+        mutableStateOf(
+            seasons.firstOrNull()
+        )
+    }
+    val episodes = selectedSeason?.episodes.orEmpty()
+    val bg = MaterialTheme.colorScheme.background
+    Column(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        if (seasons.size > 1) {
+            Text(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                text = "Seasons",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            items(items = seasons) { season ->
+                val isSelected = selectedSeason == season
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            color = if (isSelected) Color.White.copy(alpha = 0.10f) else Color.Black
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) Color.Transparent else Color.White.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(50)
+                        )
+                        .clickable {
+                            selectedSeason = season
+                        }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = season.seasonName,
+                        color = if (isSelected) Color.White else Color.Gray,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
+        Spacer(modifier = modifier.height(12.dp))
+        if (episodes.isEmpty()) {
+            Text(
+                text = "No episodes available"
+            )
+        } else {
+            LazyRow(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(bottom = 50.dp)
+            ) {
+                items(items = episodes) { ep ->
+                    Box(
+                        modifier = Modifier
+                            .clip(shape = RoundedCornerShape(10.dp))
+                            .width(210.dp)
+                            .aspectRatio(16f / 9.5f)
+                    ) {
+                        PosterImage(
+                            posterUrl = posterUrl,
+                            contentDescription = "Detailed Ui",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(2.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Black.copy(alpha = 0.40f),
+                                            Color.Black.copy(alpha = 0.85f)
+                                        )
+                                    )
+                                )
+                        )
+                    }
+                }
             }
         }
     }
