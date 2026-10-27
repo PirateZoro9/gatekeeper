@@ -1,9 +1,15 @@
 package com.nen.gatekeeper.ui.detail
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,9 +28,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -64,11 +70,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nen.gatekeeper.data.model.Episode
 import com.nen.gatekeeper.data.model.MediaDetails
 import com.nen.gatekeeper.data.model.Season
+import com.nen.gatekeeper.ui.components.AppImage
 import com.nen.gatekeeper.ui.components.EmptyState
 import com.nen.gatekeeper.ui.components.ErrorState
-import com.nen.gatekeeper.ui.components.PosterImage
 import com.nen.gatekeeper.ui.components.shimmerEffect
 import com.nen.gatekeeper.ui.theme.AppRadius
 import com.nen.gatekeeper.ui.theme.AppSpacing
@@ -97,7 +104,10 @@ fun DetailScreen(
                     }
 
                     is DetailUiState.Success -> {
-                        DetailContent(state.detailPage)
+                        DetailContent(
+                            mediaDetail = state.detailPage,
+                            contentPadding = contentPadding
+                        )
                     }
 
                     is DetailUiState.Loading -> {
@@ -106,7 +116,10 @@ fun DetailScreen(
                 }
             }
         }
-        DetailTopBar(onBackClick = onBackClick)
+        DetailTopBar(
+            onBackClick = onBackClick,
+            contentPadding = contentPadding
+        )
     }
 }
 
@@ -180,12 +193,18 @@ fun DetailShimmer(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun DetailTopBar(onBackClick: () -> Unit) {
+fun DetailTopBar(
+    onBackClick: () -> Unit,
+    contentPadding: PaddingValues
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 14.dp)
+            .padding(
+                top = contentPadding.calculateTopPadding() + 4.dp,
+                start = 14.dp,
+                end = 14.dp
+            )
     ) {
         OutlinedIconButton(
             modifier = Modifier
@@ -207,9 +226,14 @@ fun DetailTopBar(onBackClick: () -> Unit) {
 
 @Composable
 fun DetailContent(
-    mediaDetail: MediaDetails
+    mediaDetail: MediaDetails,
+    contentPadding: PaddingValues
 ) {
-    LazyColumn {
+    LazyColumn(
+        contentPadding = PaddingValues(
+            bottom = 24.dp + contentPadding.calculateBottomPadding()
+        )
+    ) {
         // Hero poster with gradient, title, rating badge, and play button
         item {
             DetailHeroHeader(
@@ -259,7 +283,7 @@ fun DetailHeroHeader(
             .aspectRatio(3f / 4f)
             .clip(shape = RoundedCornerShape(AppRadius.hero))
     ) {
-        PosterImage(
+        AppImage(
             posterUrl = posterUrl,
             contentDescription = "Detailed Poster",
             modifier = Modifier
@@ -455,30 +479,61 @@ fun DetailSeriesSection(
     modifier: Modifier = Modifier,
     posterUrl: String?
 ) {
-    var selectedSeason by remember {
+    var selectedSeasonNumber by rememberSaveable {
         mutableStateOf(
-            seasons.firstOrNull()
+            seasons.firstOrNull()?.seasonNumber ?: 1
         )
     }
+    val selectedSeason = seasons.find {
+        it.seasonNumber == selectedSeasonNumber
+    }
     val episodes = selectedSeason?.episodes.orEmpty()
-    val bg = MaterialTheme.colorScheme.background
+    val episodeListState = rememberSaveable(selectedSeasonNumber, saver = LazyListState.Saver) {
+        LazyListState()
+    }
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
-        if (seasons.size > 1) {
-            Text(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                text = "Seasons",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (seasons.size > 1) {
+                Text(
+                    text = "Seasons",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .clip(shape = RoundedCornerShape(6.dp))
+                    .background(Color(0xFFFF5C39).copy(alpha = 0.15f))
+                    .border(
+                        width = 1.dp,
+                        color = Color(0xFFFF5C39).copy(alpha = 0.30f),
+                        shape = RoundedCornerShape(6.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = "${episodes.size} Episodes Available",
+                    color = Color(0xFFFF5C39),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
+        Spacer(modifier = Modifier.height(12.dp))
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp),
         ) {
             items(items = seasons) { season ->
                 val isSelected = selectedSeason == season
@@ -486,7 +541,7 @@ fun DetailSeriesSection(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .background(
-                            color = if (isSelected) Color.White.copy(alpha = 0.10f) else Color.Black
+                            color = if (isSelected) Color.White else Color.Black
                         )
                         .border(
                             width = 1.dp,
@@ -494,59 +549,147 @@ fun DetailSeriesSection(
                             shape = RoundedCornerShape(50)
                         )
                         .clickable {
-                            selectedSeason = season
+                            selectedSeasonNumber = season.seasonNumber
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(
                         text = season.seasonName,
-                        color = if (isSelected) Color.White else Color.Gray,
+                        color = if (isSelected) Color.Black else Color.Gray,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp
                     )
                 }
             }
         }
-        Spacer(modifier = modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         if (episodes.isEmpty()) {
             Text(
+                modifier = Modifier.padding(horizontal = 16.dp),
                 text = "No episodes available"
             )
         } else {
-            LazyRow(
-                modifier = Modifier.padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 50.dp)
-            ) {
-                items(items = episodes) { ep ->
-                    Box(
-                        modifier = Modifier
-                            .clip(shape = RoundedCornerShape(10.dp))
-                            .width(210.dp)
-                            .aspectRatio(16f / 9.5f)
-                    ) {
-                        PosterImage(
-                            posterUrl = posterUrl,
-                            contentDescription = "Detailed Ui",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .blur(2.dp)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Black.copy(alpha = 0.40f),
-                                            Color.Black.copy(alpha = 0.85f)
-                                        )
-                                    )
-                                )
+            AnimatedContent(
+                targetState = selectedSeasonNumber,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        slideInHorizontally { fullWidth -> fullWidth } + fadeIn() togetherWith (slideOutHorizontally { fullWidth -> -fullWidth } + fadeOut())
+                    } else {
+                        slideInHorizontally { fullWidth -> -fullWidth } + fadeIn() togetherWith slideOutHorizontally { fullWidth -> fullWidth } + fadeOut()
+                    }
+                }
+            ) { targetSeasonNumber ->
+                val currentSeason = seasons.find {
+                    it.seasonNumber == targetSeasonNumber
+                }
+                val currentEpisodes = currentSeason?.episodes.orEmpty()
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 50.dp),
+                    state = episodeListState
+                ) {
+                    items(items = currentEpisodes) { ep ->
+                        EpisodeCard(
+                            seasonNumber = selectedSeason?.seasonNumber,
+                            episode = ep,
+                            posterUrl = posterUrl
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+
+@Composable
+fun EpisodeCard(
+    seasonNumber: Int?,
+    episode: Episode,
+    posterUrl: String?,
+    modifier: Modifier = Modifier
+) {
+    val seasonBadge = when {
+        seasonNumber == 0 -> "SP ${episode.episodeNumber}"
+        seasonNumber != null -> "S$seasonNumber E${episode.episodeNumber}"
+        else -> "EP ${episode.episodeNumber}"
+    }
+    Box(
+        modifier = modifier
+            .clip(shape = RoundedCornerShape(10.dp))
+            .width(210.dp)
+            .aspectRatio(16f / 9.5f)
+    ) {
+        AppImage(
+            posterUrl = posterUrl,
+            contentDescription = "Detailed Ui",
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(2.dp)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.40f),
+                            Color.Black.copy(alpha = 0.85f)
+                        )
+                    )
+                )
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(color = Color.White.copy(alpha = 0.05f))
+                        .border(
+                            1.dp,
+                            Color.White.copy(alpha = 0.25f),
+                            RoundedCornerShape(4.dp)
+                        )
+                        .padding(horizontal = 5.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = seasonBadge,
+                        fontSize = 12.sp
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = "Play",
+                        tint = Color.Black,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = episode.title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

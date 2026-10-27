@@ -42,9 +42,11 @@ data class MediaDetails(
 // Represents a Season containing its episodes
 data class Season(
     val seasonNumber: Int,
-    val seasonName: String = "Season $seasonNumber",
+    val seasonName: String = if (seasonNumber == 0) "Specials" else "Season $seasonNumber",
     val episodes: List<Episode> = emptyList()
-)
+) {
+    val isSpecial: Boolean get() = seasonNumber == 0
+}
 
 // Represents a single Episode in a series
 data class Episode(

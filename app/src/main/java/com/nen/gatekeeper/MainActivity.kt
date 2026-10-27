@@ -17,6 +17,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.nen.gatekeeper.data.plugin.Anikoto
 import com.nen.gatekeeper.data.plugin.FourKHDHub
 import com.nen.gatekeeper.data.repo.MediaRepository
 import com.nen.gatekeeper.ui.detail.DetailScreen

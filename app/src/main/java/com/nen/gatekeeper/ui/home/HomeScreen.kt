@@ -65,13 +65,15 @@ import com.nen.gatekeeper.data.model.CardDetails
 import com.nen.gatekeeper.data.model.HomeRow
 import com.nen.gatekeeper.ui.components.EmptyState
 import com.nen.gatekeeper.ui.components.ErrorState
-import com.nen.gatekeeper.ui.components.PosterImage
+import com.nen.gatekeeper.ui.components.AppImage
 import com.nen.gatekeeper.ui.components.shimmerEffect
 import com.nen.gatekeeper.ui.theme.AppRadius
 import com.nen.gatekeeper.ui.theme.AppSizes
 import com.nen.gatekeeper.ui.theme.AppSpacing
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlin.math.absoluteValue
 
 /**
@@ -136,14 +138,14 @@ fun HomeShimmer() {
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.45f)
-                .padding(horizontal = AppSpacing.small)
+                .padding(horizontal = AppSpacing.medium)
                 .height(30.dp)
                 .clip(shape = RoundedCornerShape(5.dp))
                 .background(color = MaterialTheme.colorScheme.secondaryContainer)
                 .shimmerEffect()
         )
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp),
+            modifier = Modifier.padding(horizontal = AppSpacing.medium),
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
         ) {
             repeat(times = 2) {
@@ -175,7 +177,7 @@ fun HomeContent(
         modifier = Modifier.fillMaxSize()
     ) {
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 100.dp),
+            contentPadding = PaddingValues(bottom = 80.dp + contentPadding.calculateBottomPadding()),
             state = listState,
             verticalArrangement = Arrangement.spacedBy(AppSpacing.medium)
         ) {
@@ -223,7 +225,7 @@ fun HeroCarousel(
     // auto scroll only runs while the screen is in front, so it is tied to the lifecycle
     val lifecycleOwner = LocalLifecycleOwner.current
     // Auto-scroll the hero carousel every 7 seconds
-    LaunchedEffect(heroCards.size) {
+    LaunchedEffect(heroCards) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 delay(7000)
@@ -233,7 +235,7 @@ fun HeroCarousel(
                         pagerState.animateScrollToPage(nextPage, animationSpec = tween(1500))
                     }
                 } catch (signal: CancellationException) {
-
+                    currentCoroutineContext().ensureActive()
                 }
             }
         }
@@ -269,7 +271,7 @@ fun HeroCarousel(
             ) {
 
                 // the parallax (0.055) and scale go in through this modifier, PosterImage passes it to the image inside
-                PosterImage(
+                AppImage(
                     posterUrl = hero.posterUrl,
                     contentDescription = "Hero Poster",
                     modifier = Modifier
@@ -397,15 +399,18 @@ fun HomeCategoryRow(
     Column(modifier = modifier) {
         Text(
             modifier = Modifier.padding(
-                vertical = AppSpacing.small,
-                horizontal = AppSpacing.small
+                start = AppSpacing.medium,
+                end = AppSpacing.medium,
+                top = 8.dp,
+                bottom = 6.dp
             ),
             text = row.rowTitle,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onPrimary,
         )
         LazyRow(
-            modifier = Modifier.padding(horizontal = AppSpacing.small),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = AppSpacing.medium),
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
         ) {
             // Show up to 20 movie posters per row
@@ -435,7 +440,7 @@ fun MovieCard(
                 .background(MaterialTheme.colorScheme.secondaryContainer)
                 .clickable(onClick = onClick)
         ) {
-            PosterImage(
+            AppImage(
                 posterUrl = card.posterUrl,
                 contentDescription = "Row Poster",
                 modifier = Modifier.fillMaxSize(),
@@ -454,10 +459,11 @@ fun MovieCard(
                 }
             }
         }
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             modifier = Modifier
                 .width(AppSizes.posterWidth)
-                .padding(horizontal = 1.dp),
+                .padding(horizontal = 2.dp),
             text = card.title,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onPrimary,
@@ -465,12 +471,13 @@ fun MovieCard(
             overflow = TextOverflow.Ellipsis
         )
         card.releaseYear?.let { year ->
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = year,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 1.dp)
+                modifier = Modifier.padding(horizontal = 2.dp)
             )
         }
     }

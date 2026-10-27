@@ -63,7 +63,7 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.core)
-    implementation("androidx.lifecycle:lifecycle-viewmodel-navigation3:2.11.0")
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.compose.animation)
 }
 

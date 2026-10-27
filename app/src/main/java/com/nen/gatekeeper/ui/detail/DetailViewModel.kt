@@ -18,10 +18,15 @@ class DetailViewModel(private val mediaRepository: MediaRepository, private val 
 
     fun loadDetails() {
         viewModelScope.launch {
+            _uiState.value = DetailUiState.Loading
             val result = mediaRepository.getDetails(detailUrl)
             result.fold(
                 onSuccess = { data ->
-                    _uiState.value = DetailUiState.Success(data)
+                    if (data.title.isNotBlank()) {
+                        _uiState.value = DetailUiState.Success(data)
+                    } else {
+                        _uiState.value = DetailUiState.Empty
+                    }
                 },
                 onFailure = {
                     _uiState.value = DetailUiState.Error(

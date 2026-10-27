@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.nen.gatekeeper.ui.theme.AppSpacing
 
-// Jab data empty ho ya koi content na mile
+// Shown when data is empty or no content is found
 @Composable
 fun EmptyState(
     message: String = "No content found",
@@ -32,14 +32,12 @@ fun EmptyState(
             color = MaterialTheme.colorScheme.onPrimary
         )
         if (onRetry != null) {
-            OutlinedButton(onClick = onRetry) {
-                Text(text = "Retry")
-            }
+            OutlinedButton(onClick = onRetry) { Text(text = "Retry") }
         }
     }
 }
 
-// Jab load hone me koi error/failure aaye
+// Shown when loading fails with an error
 @Composable
 fun ErrorState(
     message: String = "Something went wrong",
@@ -58,8 +56,6 @@ fun ErrorState(
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onPrimary
         )
-        OutlinedButton(onClick = onRetry) {
-            Text(text = "Retry")
-        }
+        OutlinedButton(onClick = onRetry) { Text(text = "Retry") }
     }
 }

@@ -13,7 +13,7 @@ import coil3.request.crossfade
 import com.nen.gatekeeper.R
 
 @Composable
-fun PosterImage(
+fun AppImage(
     posterUrl: String?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
