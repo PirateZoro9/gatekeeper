@@ -3,9 +3,11 @@ package com.nen.gatekeeper.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nen.gatekeeper.data.repo.MediaRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * ViewModel for the home screen.
@@ -13,7 +15,9 @@ import kotlinx.coroutines.launch
  * Fetches movie rows from the repository and exposes the UI state
  * so the screen knows whether to show loading, error, or content.
  */
-class HomeViewModel(private val mediaRepository: MediaRepository) : ViewModel() {
+@HiltViewModel
+class HomeViewModel @Inject constructor(private val mediaRepository: MediaRepository) :
+    ViewModel() {
 
     // Internal state flow that updates the current screen state
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -36,9 +40,9 @@ class HomeViewModel(private val mediaRepository: MediaRepository) : ViewModel() 
                     val cleanedRows = row.filter {
                         it.rowCards.isNotEmpty()
                     }
-                    if(cleanedRows.isNotEmpty()){
+                    if (cleanedRows.isNotEmpty()) {
                         _uiState.value = HomeUiState.Success(cleanedRows)
-                    }else{
+                    } else {
                         _uiState.value = HomeUiState.Empty
                     }
                 },

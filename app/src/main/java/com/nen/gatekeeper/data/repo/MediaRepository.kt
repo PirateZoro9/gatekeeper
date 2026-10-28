@@ -6,6 +6,7 @@ import com.nen.gatekeeper.data.model.MediaDetails
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 /**
  * Repository that manages media data for the app.
@@ -13,7 +14,7 @@ import kotlinx.coroutines.withContext
  * Sits between the data source and the ViewModel to clean,
  * filter, and safely handle errors before passing data to the UI.
  */
-class MediaRepository(private val api: MainApi) {
+class MediaRepository @Inject constructor(private val api: MainApi) {
 
     // Fetches home screen data safely on a background thread
     suspend fun getHome(): Result<List<HomeRow>> = withContext(Dispatchers.IO) {

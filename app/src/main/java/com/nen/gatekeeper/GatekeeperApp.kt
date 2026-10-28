@@ -1,6 +1,7 @@
 package com.nen.gatekeeper
 
 import android.app.Application
+import dagger.hilt.android.HiltAndroidApp
 
-class GatekeeperApp : Application() {
-}
+@HiltAndroidApp
+class GatekeeperApp : Application()

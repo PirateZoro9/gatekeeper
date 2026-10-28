@@ -24,6 +24,14 @@ data class HomeRow(
     val categoryUrl: String? = null    // Web link or path for "See All" full category view
 )
 
+// A flat, simple stream/download link (No nesting!)
+data class StreamLink(
+    val name: String,         // "HubCloud" ya "1080p HEVC"
+    val quality: String,      // "1080p", "720p", "480p", "Unknown"
+    val url: String,          // Redirect link (greenmotors / hubcloud)
+    val size: String? = null  // "1.4 GB" (agar mile toh)
+)
+
 // Main detailed page model (Supports both Movies and Series)
 data class MediaDetails(
     val title: String,
@@ -31,7 +39,7 @@ data class MediaDetails(
     val genres: List<String> = emptyList(),
     val synopsis: String? = null,
     val rating: String? = null,
-    val quality: List<String> = emptyList(),
+    val movieLinks: List<StreamLink> = emptyList(),
     val seasons: List<Season> = emptyList()
 ) {
     // Automatically true if seasons are present, false for movies
@@ -51,5 +59,7 @@ data class Season(
 // Represents a single Episode in a series
 data class Episode(
     val episodeNumber: Int,
-    val title: String = "Episode $episodeNumber"
+    val title: String = "Episode $episodeNumber",
+    val episodeUrl: String? = null,
+    val episodeLinks: List<StreamLink> = emptyList()
 )

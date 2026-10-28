@@ -591,6 +591,7 @@ fun DetailSeriesSection(
                 ) {
                     items(items = currentEpisodes) { ep ->
                         EpisodeCard(
+                            isSpecial = selectedSeason?.isSpecial == true,
                             seasonNumber = selectedSeason?.seasonNumber,
                             episode = ep,
                             posterUrl = posterUrl
@@ -605,13 +606,14 @@ fun DetailSeriesSection(
 
 @Composable
 fun EpisodeCard(
+    isSpecial: Boolean = false,
     seasonNumber: Int?,
     episode: Episode,
     posterUrl: String?,
     modifier: Modifier = Modifier
 ) {
     val seasonBadge = when {
-        seasonNumber == 0 -> "SP ${episode.episodeNumber}"
+        isSpecial -> "SP ${episode.episodeNumber}"
         seasonNumber != null -> "S$seasonNumber E${episode.episodeNumber}"
         else -> "EP ${episode.episodeNumber}"
     }
