@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.nen.gatekeeper.ui.theme.AppSpacing
 
-// Shown when data is empty or no content is found
+// Empty state view
 @Composable
 fun EmptyState(
     message: String = "No content found",
@@ -37,7 +37,7 @@ fun EmptyState(
     }
 }
 
-// Shown when loading fails with an error
+// Error state view
 @Composable
 fun ErrorState(
     message: String = "Something went wrong",

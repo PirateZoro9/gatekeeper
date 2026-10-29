@@ -76,12 +76,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlin.math.absoluteValue
 
-/**
- * Main home screen of the app.
- *
- * Displays the top branding bar and observes the ViewModel state
- * to show shimmer loading placeholders or the loaded movie rows.
- */
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -89,11 +83,8 @@ fun HomeScreen(
     contentPadding: PaddingValues,
     onCardClick: (cardUrl: String) -> Unit
 ) {
-    // uiState is collected here, when the state changes the screen updates itself
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    Column(
-        modifier = modifier
-    ) {
+    Column(modifier = modifier) {
         Crossfade(targetState = uiState, animationSpec = tween(500)) { state ->
             when (state) {
                 is HomeUiState.Error -> {
@@ -120,7 +111,7 @@ fun HomeScreen(
     }
 }
 
-// Skeleton placeholder matching the hero carousel and movie cards
+// Shimmer placeholder
 @Composable
 fun HomeShimmer() {
     Column(
@@ -162,26 +153,23 @@ fun HomeShimmer() {
     }
 }
 
-// Main content displaying the top hero carousel and category rows
+// Home content list
 @Composable
 fun HomeContent(
     rows: List<HomeRow>,
     contentPadding: PaddingValues,
     onCardClick: (cardUrl: String) -> Unit
 ) {
-    // Pick the first few movies for the featured hero carousel
     val heroCards = rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
     val listState = rememberLazyListState()
     val isScrolling = listState.isScrollInProgress
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             contentPadding = PaddingValues(bottom = 80.dp + contentPadding.calculateBottomPadding()),
             state = listState,
             verticalArrangement = Arrangement.spacedBy(AppSpacing.medium)
         ) {
-            // Featured hero banner carousel at the top
+            // Hero banner
             item(contentType = "Hero") {
                 HeroCarousel(
                     heroCards = heroCards,
@@ -189,7 +177,7 @@ fun HomeContent(
                 )
             }
 
-            // Category rows with horizontally scrollable movie cards
+            // Category rows
             items(items = rows, contentType = { "Rows" }, key = { it.rowTitle }) { row ->
                 HomeCategoryRow(
                     row = row,
@@ -201,7 +189,7 @@ fun HomeContent(
     }
 }
 
-// Featured hero banner carousel with parallax effect, auto-scroll and animated indicators
+// Featured hero carousel with auto-scroll and indicators
 @Composable
 fun HeroCarousel(
     heroCards: List<CardDetails>,
@@ -214,17 +202,14 @@ fun HeroCarousel(
         initialPage = Int.MAX_VALUE / 2 - (Int.MAX_VALUE / 2) % heroCards.size,
         pageCount = { Int.MAX_VALUE }
     )
-    // all hero layers are built from these pager numbers
     val currentPage = pagerState.currentPage
-    // only 3 pages are needed: previous, current and next
     val currentPageList = listOf(
         (currentPage - 1).coerceAtLeast(0),
         currentPage,
         (currentPage + 1).coerceAtMost(pagerState.pageCount - 1)
     )
-    // auto scroll only runs while the screen is in front, so it is tied to the lifecycle
     val lifecycleOwner = LocalLifecycleOwner.current
-    // Auto-scroll the hero carousel every 7 seconds
+
     LaunchedEffect(heroCards) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
@@ -247,21 +232,16 @@ fun HeroCarousel(
             .fillMaxWidth()
             .aspectRatio(4f / 5f)
             .clip(shape = RoundedCornerShape(AppRadius.hero))
-        // black fade on the bottom 40%, the poster melts into the background
     ) {
-        // the real pager: the user can swipe the pages himself
         HorizontalPager(
             state = pagerState,
             userScrollEnabled = true,
-            modifier = Modifier.fillMaxSize(),
-            // 1 page on both sides stays ready, so its poster is loaded before the swipe reaches it
+            modifier = Modifier.fillMaxSize()
         ) { page ->
             val hero = heroCards[page % heroCards.size]
             val hasMeta = hero.releaseYear != null || hero.rating != null || hero.qualityTag != null
-            // how far this page is from the settled page (0 = settled, near -1 or 1 = one page away)
-            val pageOffset =
-                (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-            // the pager slides the page, this moves it back by the same amount, so the page stays in one place and only fades
+            val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+
             Box(
                 modifier = Modifier
                     .graphicsLayer {
@@ -269,8 +249,6 @@ fun HeroCarousel(
                         alpha = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
                     }
             ) {
-
-                // the parallax (0.055) and scale go in through this modifier, PosterImage passes it to the image inside
                 AppImage(
                     posterUrl = hero.posterUrl,
                     contentDescription = "Hero Poster",
@@ -292,7 +270,6 @@ fun HeroCarousel(
                                 startY = size.height * 0.6f,
                                 endY = size.height
                             )
-                            // first the content is drawn, then this fade rect on top of it
                             onDrawWithContent {
                                 drawContent()
                                 drawRect(
@@ -329,16 +306,9 @@ fun HeroCarousel(
                                 Alignment.CenterHorizontally
                             )
                         ) {
-                            hero.releaseYear?.let {
-                                MetaBadge(it)
-                            }
-                            hero.rating?.let {
-                                MetaBadge(it)
-
-                            }
-                            hero.qualityTag?.let {
-                                MetaBadge(it)
-                            }
+                            hero.releaseYear?.let { MetaBadge(it) }
+                            hero.rating?.let { MetaBadge(it) }
+                            hero.qualityTag?.let { MetaBadge(it) }
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -355,7 +325,7 @@ fun HeroCarousel(
             }
         }
 
-        // indicators: one pill for each film, this is outside the layer loop so the pills do not dissolve
+        // Indicators
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -363,14 +333,11 @@ fun HeroCarousel(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             heroCards.indices.forEach { index ->
-                val page = currentPageList.firstOrNull {
-                    it % heroCards.size == index
-                }
+                val page = currentPageList.firstOrNull { it % heroCards.size == index }
                 val fraction = if (page == null) {
                     0f
                 } else {
-                    val pageOffset =
-                        (currentPage - page) + pagerState.currentPageOffsetFraction
+                    val pageOffset = (currentPage - page) + pagerState.currentPageOffsetFraction
                     (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
                 }
                 Box(
@@ -380,7 +347,6 @@ fun HeroCarousel(
                             MaterialTheme.colorScheme.onBackground
                                 .copy(alpha = 0.35f + 0.57f * fraction)
                         )
-                        // this is a formula, not if/else: when visibility grows the pill grows with it
                         .width(8.dp + 24.dp * fraction)
                         .height(8.dp)
                 )
@@ -389,7 +355,7 @@ fun HeroCarousel(
     }
 }
 
-// Category row with horizontally scrollable movie cards
+// Category row
 @Composable
 fun HomeCategoryRow(
     row: HomeRow,
@@ -413,7 +379,6 @@ fun HomeCategoryRow(
             contentPadding = PaddingValues(horizontal = AppSpacing.medium),
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
         ) {
-            // Show up to 20 movie posters per row
             items(row.rowCards.take(20), key = { rowCard -> rowCard.detailedUrl }) { rowCard ->
                 MovieCard(
                     card = rowCard,
@@ -424,7 +389,7 @@ fun HomeCategoryRow(
     }
 }
 
-// Reusable single movie card component
+// Movie card
 @Composable
 fun MovieCard(
     card: CardDetails,
@@ -450,13 +415,9 @@ fun MovieCard(
                     .fillMaxWidth()
                     .padding(6.dp),
             ) {
-                card.qualityTag?.let {
-                    MetaBadge(it)
-                }
+                card.qualityTag?.let { MetaBadge(it) }
                 Spacer(modifier = Modifier.weight(1f))
-                card.rating?.let {
-                    MetaBadge(it)
-                }
+                card.rating?.let { MetaBadge(it) }
             }
         }
         Spacer(modifier = Modifier.height(6.dp))
@@ -483,8 +444,8 @@ fun MovieCard(
     }
 }
 
+// Bottom navigation bar
 @Composable
-// the bottom bar is only a look for now, its screens will be made later
 fun HomeBottomBar(
     isScrolling: Boolean,
     modifier: Modifier
@@ -555,7 +516,7 @@ fun HomeBottomBar(
     }
 }
 
-// Reusable navigation bar item
+// Navigation item
 @Composable
 private fun BottomBarItem(
     icon: ImageVector,

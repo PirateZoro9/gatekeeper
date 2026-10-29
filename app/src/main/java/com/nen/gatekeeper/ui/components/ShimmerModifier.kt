@@ -15,14 +15,8 @@ import androidx.compose.ui.graphics.Brush
 import com.nen.gatekeeper.ui.theme.shimmerBase
 import com.nen.gatekeeper.ui.theme.shimmerHighlight
 
-/**
- * Animated shimmer effect for loading placeholders.
- *
- * Draws a moving diagonal glow over empty cards and components
- * while images and content are loading.
- */
+// Shimmer placeholder effect for loading states
 fun Modifier.shimmerEffect(): Modifier = composed {
-    // Infinite animation loop for continuous shimmering
     val transition = rememberInfiniteTransition()
     val animateTransition = transition.animateFloat(
         initialValue = 0f,
@@ -34,7 +28,6 @@ fun Modifier.shimmerEffect(): Modifier = composed {
         label = "Animate Shimmer"
     )
 
-    // Diagonal gradient that sweeps across: base -> highlight -> base
     val brush = Brush.linearGradient(
         colors = listOf(
             MaterialTheme.colorScheme.shimmerBase,
@@ -45,6 +38,5 @@ fun Modifier.shimmerEffect(): Modifier = composed {
         end = Offset(x = animateTransition.value, y = animateTransition.value)
     )
 
-    // Apply the animated gradient as background
     this.background(brush)
 }

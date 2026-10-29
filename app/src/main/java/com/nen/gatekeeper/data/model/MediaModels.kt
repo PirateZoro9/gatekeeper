@@ -1,13 +1,6 @@
 package com.nen.gatekeeper.data.model
 
-/**
- * Data models used to display content on the UI.
- *
- * Defines the structure for individual movie cards,
- * horizontal home rows, and detailed media pages.
- */
-
-// Represents a single movie or show card
+// Represents a media card on home or catalog pages
 data class CardDetails(
     val title: String,
     val posterUrl: String? = null,
@@ -17,22 +10,22 @@ data class CardDetails(
     val releaseYear: String? = null
 )
 
-// Represents a horizontal row of movies on the home screen
+// Horizontal row of media cards on the home screen
 data class HomeRow(
-    val rowTitle: String,              // Section heading (e.g., "Latest Releases")
-    val rowCards: List<CardDetails>,   // List of movie cards inside this row
-    val categoryUrl: String? = null    // Web link or path for "See All" full category view
+    val rowTitle: String,
+    val rowCards: List<CardDetails>,
+    val categoryUrl: String? = null
 )
 
-// A flat, simple stream/download link (No nesting!)
+// Direct or intermediate stream/download link
 data class StreamLink(
-    val name: String,         // "HubCloud" ya "1080p HEVC"
-    val quality: String,      // "1080p", "720p", "480p", "Unknown"
-    val url: String,          // Redirect link (greenmotors / hubcloud)
-    val size: String? = null  // "1.4 GB" (agar mile toh)
+    val name: String,         // e.g., "HubCloud" or "Server 1"
+    val quality: String,      // e.g., "1080p", "720p", "480p", "Unknown"
+    val url: String,          // Stream or redirect URL
+    val size: String? = null  // e.g., "1.4 GB"
 )
 
-// Main detailed page model (Supports both Movies and Series)
+// Detailed media information for movies and series
 data class MediaDetails(
     val title: String,
     val posterUrl: String? = null,
@@ -42,12 +35,10 @@ data class MediaDetails(
     val movieLinks: List<StreamLink> = emptyList(),
     val seasons: List<Season> = emptyList()
 ) {
-    // Automatically true if seasons are present, false for movies
-    val isSeries: Boolean
-        get() = seasons.isNotEmpty()
+    val isSeries: Boolean get() = seasons.isNotEmpty()
 }
 
-// Represents a Season containing its episodes
+// Season metadata containing episodes
 data class Season(
     val seasonNumber: Int,
     val seasonName: String = if (seasonNumber == 0) "Specials" else "Season $seasonNumber",
@@ -56,7 +47,7 @@ data class Season(
     val isSpecial: Boolean get() = seasonNumber == 0
 }
 
-// Represents a single Episode in a series
+// Single episode metadata
 data class Episode(
     val episodeNumber: Int,
     val title: String = "Episode $episodeNumber",

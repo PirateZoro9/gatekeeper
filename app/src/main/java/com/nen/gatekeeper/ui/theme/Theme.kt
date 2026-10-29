@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-// Default dark theme color scheme for the cinema interface
+// Dark theme color scheme
 private val GateKeeperColorScheme = darkColorScheme(
     primary = Accent,
     onPrimary = TextPrimary,
@@ -63,7 +63,7 @@ fun GateKeeperTheme(
     )
 }
 
-// Quick access to shimmer loading colors from MaterialTheme.colorScheme
+// Shimmer color extensions
 val ColorScheme.shimmerBase: Color
     get() = ShimmerBase
 
