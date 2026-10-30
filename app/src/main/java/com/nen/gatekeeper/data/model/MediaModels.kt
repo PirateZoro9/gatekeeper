@@ -32,7 +32,7 @@ data class MediaDetails(
     val genres: List<String> = emptyList(),
     val synopsis: String? = null,
     val rating: String? = null,
-    val movieLinks: List<StreamLink> = emptyList(),
+    val streamLinks: List<StreamLink> = emptyList(),
     val seasons: List<Season> = emptyList()
 ) {
     val isSeries: Boolean get() = seasons.isNotEmpty()

@@ -10,7 +10,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @HiltViewModel(assistedFactory = DetailViewModel.Factory::class)
 class DetailViewModel @AssistedInject constructor(
@@ -46,6 +45,25 @@ class DetailViewModel @AssistedInject constructor(
                     _uiState.value = DetailUiState.Error(
                         "Failed to load content. Please try again later."
                     )
+                }
+            )
+        }
+    }
+
+    private val _streamState = MutableStateFlow<StreamUIState>(StreamUIState.Idle)
+    val streamState = _streamState.asStateFlow()
+
+    fun loadStreams(url: String) {
+        viewModelScope.launch {
+            _streamState.value = StreamUIState.Loading
+            val result = mediaRepository.getStreams(url)
+            result.fold(
+                onSuccess = { streams ->
+                    _streamState.value = StreamUIState.Success(streams)
+                },
+                onFailure = { error ->
+                    _streamState.value =
+                        StreamUIState.Error(error.message ?: "Failed to resolve stream")
                 }
             )
         }

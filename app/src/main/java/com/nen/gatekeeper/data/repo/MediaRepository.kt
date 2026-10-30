@@ -3,6 +3,7 @@ package com.nen.gatekeeper.data.repo
 import com.nen.gatekeeper.data.api.MainApi
 import com.nen.gatekeeper.data.model.HomeRow
 import com.nen.gatekeeper.data.model.MediaDetails
+import com.nen.gatekeeper.data.model.StreamLink
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,7 +30,7 @@ class MediaRepository @Inject constructor(private val api: MainApi) {
     // Fetch media details by url
     suspend fun getDetails(url: String): Result<MediaDetails> = withContext(Dispatchers.IO) {
         if (url.isBlank()) {
-            return@withContext Result.failure(IllegalArgumentException("URL cannot be blank"))
+            return@withContext Result.failure(IllegalArgumentException("URL missing or expired"))
         }
         try {
             val details = api.getDetails(url)
@@ -38,6 +39,20 @@ class MediaRepository @Inject constructor(private val api: MainApi) {
             throw e
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    suspend fun getStreams(url: String): Result<List<StreamLink>> = withContext(Dispatchers.IO) {
+        if (url.isBlank()) {
+            return@withContext Result.failure(exception = IllegalArgumentException("URL missing or expired"))
+        }
+        try {
+            val streamLinks = api.loadStreams(url)
+            Result.success(streamLinks)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(exception = e)
         }
     }
 }

@@ -2,7 +2,6 @@ package com.nen.gatekeeper.ui.detail
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -11,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,22 +33,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,7 +50,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,19 +57,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,8 +81,8 @@ import com.nen.gatekeeper.ui.components.StreamSelectorSheet
 import com.nen.gatekeeper.ui.components.shimmerEffect
 import com.nen.gatekeeper.ui.theme.AppRadius
 import com.nen.gatekeeper.ui.theme.AppSpacing
-import kotlinx.coroutines.launch
 
+// Media detail screen with hero, meta, seasons, and stream sheet
 @Composable
 fun DetailScreen(
     viewModel: DetailViewModel,
@@ -124,7 +109,8 @@ fun DetailScreen(
                     is DetailUiState.Success -> {
                         DetailContent(
                             mediaDetail = state.detailPage,
-                            contentPadding = contentPadding
+                            contentPadding = contentPadding,
+                            viewModel = viewModel
                         )
                     }
 
@@ -141,6 +127,7 @@ fun DetailScreen(
     }
 }
 
+// Shimmer loading placeholder
 @Composable
 fun DetailShimmer(modifier: Modifier = Modifier) {
     Column(
@@ -210,6 +197,7 @@ fun DetailShimmer(modifier: Modifier = Modifier) {
     }
 }
 
+// Floating back button top bar
 @Composable
 fun DetailTopBar(
     onBackClick: () -> Unit,
@@ -242,13 +230,22 @@ fun DetailTopBar(
     }
 }
 
+// Main detail scrollable content
 @Composable
 fun DetailContent(
     mediaDetail: MediaDetails,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
+    viewModel: DetailViewModel
 ) {
+    val streamState by viewModel.streamState.collectAsStateWithLifecycle()
     var showStreamSheet by rememberSaveable {
         mutableStateOf(false)
+    }
+    var activeSheetTitle by remember {
+        mutableStateOf("")
+    }
+    var activeStreamLinks by remember {
+        mutableStateOf<List<StreamLink>>(emptyList())
     }
     LazyColumn(
         contentPadding = PaddingValues(
@@ -262,6 +259,8 @@ fun DetailContent(
                 title = mediaDetail.title,
                 rating = mediaDetail.rating,
                 onPlayClick = {
+                    activeSheetTitle = mediaDetail.title
+                    activeStreamLinks = mediaDetail.streamLinks
                     showStreamSheet = true
                 }
             )
@@ -282,20 +281,31 @@ fun DetailContent(
             if (mediaDetail.isSeries) {
                 DetailSeriesSection(
                     mediaDetail.seasons,
-                    posterUrl = mediaDetail.posterUrl
-                )
-            } else {
-                DetailMovieSection(
-                    movieLinks = mediaDetail.movieLinks,
-                    playClicked = showStreamSheet,
-                    modifier = Modifier,
-                    contentPadding = contentPadding,
-                    movieTitle = mediaDetail.title,
-                    onDismissClick = { showStreamSheet = false }
+                    posterUrl = mediaDetail.posterUrl,
+                    onEpisodeClick = { episode, seasonBadge ->
+                        activeSheetTitle = "${mediaDetail.title} • $seasonBadge"
+                        activeStreamLinks = episode.episodeLinks
+                        showStreamSheet = true
+                    }
                 )
             }
         }
     }
+
+    // Stream and quality selection modal sheet
+    StreamSelectorSheet(
+        title = activeSheetTitle,
+        streamLink = activeStreamLinks,
+        isOpen = showStreamSheet,
+        onDismiss = {
+            showStreamSheet = false
+        },
+        onVerifyClick = { urls ->
+            urls.firstOrNull()?.let { url ->
+                viewModel.loadStreams(url)
+            }
+        }
+    )
 }
 
 // Hero header with poster, title, rating, and play button
@@ -504,28 +514,13 @@ fun DetailSynopsisSection(
     }
 }
 
-@Composable
-fun DetailMovieSection(
-    movieLinks: List<StreamLink>,
-    playClicked: Boolean,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues,
-    movieTitle: String,
-    onDismissClick: () -> Unit
-) {
-    StreamSelectorSheet(
-        title = movieTitle,
-        streamLink = movieLinks,
-        isOpen = playClicked,
-        onDismiss = onDismissClick
-    )
-}
-
+// Series section with seasons and episodes
 @Composable
 fun DetailSeriesSection(
     seasons: List<Season>,
     modifier: Modifier = Modifier,
-    posterUrl: String?
+    posterUrl: String?,
+    onEpisodeClick: (episode: Episode, seasonBadge: String) -> Unit
 ) {
     var selectedSeasonNumber by rememberSaveable {
         mutableStateOf(
@@ -578,6 +573,7 @@ fun DetailSeriesSection(
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
+        // Season selector chips
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -617,6 +613,7 @@ fun DetailSeriesSection(
                 text = "No episodes available"
             )
         } else {
+            // Animated episode cards carousel
             AnimatedContent(
                 targetState = selectedSeasonNumber,
                 transitionSpec = {
@@ -642,7 +639,8 @@ fun DetailSeriesSection(
                             isSpecial = selectedSeason?.isSpecial == true,
                             seasonNumber = selectedSeason?.seasonNumber,
                             episode = ep,
-                            posterUrl = posterUrl
+                            posterUrl = posterUrl,
+                            onEpisodeClick = onEpisodeClick
                         )
                     }
                 }
@@ -651,15 +649,17 @@ fun DetailSeriesSection(
     }
 }
 
-
+// Single episode card with blurred poster
 @Composable
 fun EpisodeCard(
     isSpecial: Boolean = false,
     seasonNumber: Int?,
     episode: Episode,
     posterUrl: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onEpisodeClick: (episode: Episode, seasonBadge: String) -> Unit
 ) {
+    // Season and episode badge label
     val seasonBadge = when {
         isSpecial -> "SP ${episode.episodeNumber}"
         seasonNumber != null -> "S$seasonNumber E${episode.episodeNumber}"
@@ -670,7 +670,13 @@ fun EpisodeCard(
             .clip(shape = RoundedCornerShape(10.dp))
             .width(210.dp)
             .aspectRatio(16f / 9.5f)
+            .clickable {
+                onEpisodeClick(
+                    episode, seasonBadge
+                )
+            }
     ) {
+        // Blurred poster background
         AppImage(
             posterUrl = posterUrl,
             contentDescription = "Detailed Ui",
