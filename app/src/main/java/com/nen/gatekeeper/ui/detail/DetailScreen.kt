@@ -301,10 +301,9 @@ fun DetailContent(
             showStreamSheet = false
         },
         onVerifyClick = { urls ->
-            urls.firstOrNull()?.let { url ->
-                viewModel.loadStreams(url)
-            }
-        }
+            viewModel.verifyStreams(urls)
+        },
+        streamUIState = streamState
     )
 }
 

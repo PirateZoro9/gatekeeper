@@ -36,6 +36,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
@@ -71,9 +72,10 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nen.gatekeeper.data.model.StreamLink
+import com.nen.gatekeeper.ui.detail.StreamUIState
 import kotlinx.coroutines.launch
 
-// Bottom sheet for selecting video quality and stream sources
+// Main modal bottom sheet for stream source and quality selection
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun StreamSelectorSheet(
@@ -81,7 +83,8 @@ fun StreamSelectorSheet(
     streamLink: List<StreamLink>,
     isOpen: Boolean,
     onDismiss: () -> Unit,
-    onVerifyClick: (List<String>) -> Unit
+    onVerifyClick: (List<String>) -> Unit,
+    streamUIState: StreamUIState
 ) {
     // Quality chip filter state
     var selectedQuality by rememberSaveable {
@@ -99,19 +102,6 @@ fun StreamSelectorSheet(
             }
     }
 
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-
-    // Edge fading animation for chips scroll
-    val leftFadeColor by animateColorAsState(
-        targetValue = if (listState.canScrollBackward) Color.Transparent else Color.Black,
-        animationSpec = tween(300)
-    )
-    val rightFadeColor by animateColorAsState(
-        targetValue = if (listState.canScrollForward) Color.Transparent else Color.Black.copy(),
-        animationSpec = tween(300)
-    )
-
     // Filtered stream links by selected quality
     val filteredLinks = remember(selectedQuality, streamLink) {
         if (selectedQuality == "All") {
@@ -124,6 +114,7 @@ fun StreamSelectorSheet(
             }
         }
     }
+
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
@@ -138,6 +129,7 @@ fun StreamSelectorSheet(
     }
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
+    val scope = rememberCoroutineScope()
 
     // Smooth sheet dismissal with exit animation
     val closeSheet: () -> Unit = {
@@ -149,6 +141,7 @@ fun StreamSelectorSheet(
             }
         }
     }
+
     if (isOpen) {
         ModalBottomSheet(
             sheetState = sheetState,
@@ -170,149 +163,34 @@ fun StreamSelectorSheet(
                     )
             ) {
                 // Header with title and close button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text(
-                            text = "Available Sources & Qualities",
-                            style = TextStyle(
-                                color = Color(0xFF00FF88),
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold,
-                                shadow = Shadow(
-                                    color = Color(0xFF00FF88).copy(alpha = 0.50f),
-                                    offset = Offset(0f, 0f),
-                                    blurRadius = 12f
-                                )
-                            )
-                        )
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            closeSheet()
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Cancel,
-                            contentDescription = "Cancel",
-                            tint = Color.White.copy(alpha = 0.7f)
-                        )
-                    }
+                StreamSheetHeader(
+                    title = title,
+                    onCloseClick = closeSheet
+                )
+                if (streamUIState is StreamUIState.Loading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp),
+                        color = Color(0xFF00FF88),
+                        trackColor = Color.Transparent
+                    )
                 }
-
                 Spacer(modifier = Modifier.height(14.dp))
 
                 if (streamLink.isNotEmpty()) {
-                    // Quality filter chips row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        LazyRow(
-                            state = listState,
-                            modifier = Modifier
-                                .weight(1f)
-                                .graphicsLayer(
-                                    compositingStrategy = CompositingStrategy.Offscreen
-                                )
-                                .drawWithContent {
-                                    drawContent()
-                                    val brush = Brush.horizontalGradient(
-                                        0.0f to leftFadeColor,
-                                        0.08f to Color.Black,
-                                        0.88f to Color.Black,
-                                        1.00f to rightFadeColor
-                                    )
-                                    drawRect(
-                                        brush = brush,
-                                        blendMode = BlendMode.DstIn
-                                    )
-                                },
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            itemsIndexed(qualityList) { index, quality ->
-                                val isSelected = selectedQuality == quality
-                                val count = if (quality == "All") {
-                                    streamLink.size
-                                } else {
-                                    streamLink.count {
-                                        it.quality == quality
-                                    }
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            color = if (isSelected) Color.White else Color.White.copy(
-                                                alpha = 0.08f
-                                            )
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            color = if (isSelected) Color.White else Color.White.copy(
-                                                alpha = 0.14f
-                                            ),
-                                            shape = RoundedCornerShape(8.dp)
-                                        )
-                                        .clickable {
-                                            selectedQuality = quality
-                                            scope.launch {
-                                                listState.animateScrollToItem(index)
-                                            }
-                                        }
-                                        .padding(horizontal = 14.dp, vertical = 7.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "$quality ($count)",
-                                        fontSize = 12.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color.Black else Color.White
-                                    )
-                                }
-                            }
+                    // Quality filter chips row with verify seek button
+                    QualityChipsRow(
+                        qualityList = qualityList,
+                        selectedQuality = selectedQuality,
+                        streamLinks = streamLink,
+                        onQualitySelect = { selectedQuality = it },
+                        onVerifyClick = {
+                            val urls = filteredLinks.map { it.url }
+                            onVerifyClick(urls)
                         }
+                    )
 
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Button(
-                            onClick = {
-                                val urls = filteredLinks.map {
-                                    it.url
-                                }
-                                onVerifyClick(urls)
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White.copy(alpha = 0.08f),
-                                contentColor = Color(0xFF00FF88)
-                            ),
-                            border = BorderStroke(
-                                width = 1.dp,
-                                color = Color(0xFF00FF88).copy(alpha = 0.5f)
-                            ),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                            modifier = Modifier.height(34.dp)
-                        ) {
-                            Text(
-                                text = "⚡ Verify Seek",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
                     Spacer(modifier = Modifier.height(14.dp))
 
                     // Stream links list
@@ -325,169 +203,345 @@ fun StreamSelectorSheet(
                         contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
                         items(filteredLinks) { streamInfo ->
-                            // Stream source card
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.Black.copy(alpha = 0.20f))
-                                    .border(
-                                        width = 1.dp,
-                                        color = Color.White.copy(alpha = 0.10f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(12.dp)
-                            ) {
-                                Column() {
-                                    // Quality badge and file size
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(Color.White.copy(alpha = 0.10f))
-                                                .border(
-                                                    width = 1.dp,
-                                                    color = Color.White.copy(alpha = 0.20f),
-                                                    shape = RoundedCornerShape(4.dp)
-                                                )
-                                                .padding(horizontal = 7.dp, vertical = 3.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = if (streamInfo.quality.contains(
-                                                        "4k",
-                                                        ignoreCase = true
-                                                    ) || streamInfo.quality.contains("2160")
-                                                ) "2160p / 4K" else streamInfo.quality,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White,
-                                                letterSpacing = 0.5.sp
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.weight(1f))
-                                        streamInfo.size?.let { sizeText ->
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(4.dp))
-                                                    .background(Color(0xFFFFA726).copy(alpha = 0.15f))
-                                                    .border(
-                                                        width = 1.dp,
-                                                        color = Color(0xFFFFA726).copy(alpha = 0.35f),
-                                                        shape = RoundedCornerShape(4.dp)
-                                                    )
-                                                    .padding(horizontal = 7.dp, vertical = 3.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = sizeText,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFFFFA726),
-                                                    letterSpacing = 0.5.sp
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    // Server name and play action button
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(Color.White.copy(alpha = 0.08f))
-                                            .border(
-                                                width = 1.dp,
-                                                color = Color.White.copy(alpha = 0.14f),
-                                                shape = RoundedCornerShape(8.dp)
-                                            )
-                                            .clickable {
-                                                // Link clicked
-                                            }
-                                            .padding(horizontal = 12.dp, vertical = 9.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(
-                                                text = streamInfo.name,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color.White
-                                            )
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Filled.PlayArrow,
-                                                    contentDescription = "Play",
-                                                    tint = Color(0xFF00FF88),
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                                Text(
-                                                    text = "Play",
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF00FF88)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            StreamCard(streamInfo = streamInfo, streamUIState = streamUIState)
                         }
                     }
                 } else {
                     // Empty state fallback when no links found
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp, horizontal = 16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.06f))
-                                .border(
-                                    width = 1.dp,
-                                    color = Color.White.copy(alpha = 0.12f),
-                                    shape = CircleShape
-                                )
-                                .padding(14.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Info,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.5f)
-                            )
+                    StreamEmptyState()
+                }
+            }
+        }
+    }
+}
+
+// Sheet header with glowing title and cancel icon button
+@Composable
+fun StreamSheetHeader(
+    title: String,
+    onCloseClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = "Available Sources & Qualities",
+                style = TextStyle(
+                    color = Color(0xFF00FF88),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    shadow = Shadow(
+                        color = Color(0xFF00FF88).copy(alpha = 0.50f),
+                        offset = Offset(0f, 0f),
+                        blurRadius = 12f
+                    )
+                )
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        IconButton(onClick = onCloseClick) {
+            Icon(
+                imageVector = Icons.Filled.Cancel,
+                contentDescription = "Cancel",
+                tint = Color.White.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+// Horizontal quality filter chips with edge fading and verify seek button
+@Composable
+fun QualityChipsRow(
+    qualityList: List<String>,
+    selectedQuality: String,
+    streamLinks: List<StreamLink>,
+    onQualitySelect: (String) -> Unit,
+    onVerifyClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    // Edge fading animation for chips scroll
+    val leftFadeColor by animateColorAsState(
+        targetValue = if (listState.canScrollBackward) Color.Transparent else Color.Black,
+        animationSpec = tween(300)
+    )
+    val rightFadeColor by animateColorAsState(
+        targetValue = if (listState.canScrollForward) Color.Transparent else Color.Black.copy(),
+        animationSpec = tween(300)
+    )
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        LazyRow(
+            state = listState,
+            modifier = Modifier
+                .weight(1f)
+                .graphicsLayer(
+                    compositingStrategy = CompositingStrategy.Offscreen
+                )
+                .drawWithContent {
+                    drawContent()
+                    val brush = Brush.horizontalGradient(
+                        0.0f to leftFadeColor,
+                        0.08f to Color.Black,
+                        0.88f to Color.Black,
+                        1.00f to rightFadeColor
+                    )
+                    drawRect(
+                        brush = brush,
+                        blendMode = BlendMode.DstIn
+                    )
+                },
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            itemsIndexed(qualityList) { index, quality ->
+                val isSelected = selectedQuality == quality
+                val count = if (quality == "All") {
+                    streamLinks.size
+                } else {
+                    streamLinks.count {
+                        it.quality == quality
+                    }
+                }
+                QualityChipItem(
+                    quality = quality,
+                    count = count,
+                    isSelected = isSelected,
+                    onClick = {
+                        onQualitySelect(quality)
+                        scope.launch {
+                            listState.animateScrollToItem(index)
                         }
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = "No Streaming Links Available",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Button(
+            onClick = onVerifyClick,
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White.copy(alpha = 0.08f),
+                contentColor = Color(0xFF00FF88)
+            ),
+            border = BorderStroke(
+                width = 1.dp,
+                color = Color(0xFF00FF88).copy(alpha = 0.5f)
+            ),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+            modifier = Modifier.height(34.dp)
+        ) {
+            Text(
+                text = "⚡ Verify Seek",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+// Single quality badge chip
+@Composable
+fun QualityChipItem(
+    quality: String,
+    count: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                color = if (isSelected) Color.White else Color.White.copy(
+                    alpha = 0.08f
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = if (isSelected) Color.White else Color.White.copy(
+                    alpha = 0.14f
+                ),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "$quality ($count)",
+            fontSize = 12.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) Color.Black else Color.White
+        )
+    }
+}
+
+// Single stream source card with quality badge, size badge, and play button
+@Composable
+fun StreamCard(
+    streamInfo: StreamLink,
+    modifier: Modifier = Modifier,
+    onPlayClick: () -> Unit = {},
+    streamUIState: StreamUIState
+) {
+    val formattedQuality = if (streamInfo.quality.contains(
+            "4k",
+            ignoreCase = true
+        ) || streamInfo.quality.contains("2160")
+    ) "2160p / 4K" else streamInfo.quality
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black.copy(alpha = 0.20f))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.10f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(12.dp)
+    ) {
+        Column {
+            // Quality badge and file size row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.White.copy(alpha = 0.10f))
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.20f),
+                            shape = RoundedCornerShape(4.dp)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = formattedQuality,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                streamInfo.size?.let { sizeText ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFFFA726).copy(alpha = 0.15f))
+                            .border(
+                                width = 1.dp,
+                                color = Color(0xFFFFA726).copy(alpha = 0.35f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = "Sources for this title have not been uploaded or verified yet.",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
+                            text = sizeText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFA726),
+                            letterSpacing = 0.5.sp
                         )
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Server name
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.14f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 9.dp)
+            ) {
+                Text(
+                    text = streamInfo.name,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+            }
         }
+    }
+}
+
+// Fallback view when no stream links are available
+@Composable
+fun StreamEmptyState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp, horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.06f))
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.12f),
+                    shape = CircleShape
+                )
+                .padding(14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Info,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.5f)
+            )
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(
+            text = "No Streaming Links Available",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Sources for this title have not been uploaded or verified yet.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
