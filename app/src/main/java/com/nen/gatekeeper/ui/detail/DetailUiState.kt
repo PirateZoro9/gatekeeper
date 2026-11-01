@@ -1,7 +1,6 @@
 package com.nen.gatekeeper.ui.detail
 
 import com.nen.gatekeeper.data.model.MediaDetails
-import com.nen.gatekeeper.data.model.StreamLink
 import com.nen.gatekeeper.data.model.VerifiedStreamData
 
 sealed interface DetailUiState {
@@ -16,7 +15,12 @@ sealed interface DetailUiState {
 
 sealed interface StreamUIState {
     data object Idle : StreamUIState
-    data object Loading : StreamUIState
+    data class Loading(
+        val progress: Float = 0f,
+        val statusText: String = "",
+        val streamCountText: String = ""
+    ) : StreamUIState
+
     data class Success(val streams: List<VerifiedStreamData>) : StreamUIState
     data class Error(val message: String) : StreamUIState
 }

@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -65,7 +66,10 @@ class DetailViewModel @AssistedInject constructor(
     val streamState = _streamState.asStateFlow()
     fun verifyStreams(urls: List<String>) {
         viewModelScope.launch {
-            _streamState.value = StreamUIState.Loading
+            _streamState.value = StreamUIState.Loading(
+                progress = 0.10f,
+                statusText = "Finding best streams, hang tight..."
+            )
             val semaphore = Semaphore(4)
             val gigabyte = 1024.0 * 1024 * 1024
             val megabyte = 1024.0 * 1024
@@ -92,17 +96,30 @@ class DetailViewModel @AssistedInject constructor(
                 .headers(streamHeaders.toHeaders())
                 .header("Range", "bytes=0-1")
 
+            _streamState.value = StreamUIState.Loading(
+                progress = 0.30f,
+                statusText = "Found ${directStreams.size} streams! Testing seek...",
+                streamCountText = "0 / ${directStreams.size}"
+            )
+
+            val completedCount = java.util.concurrent.atomic.AtomicInteger(0)
             val verifiedStreams = withContext(Dispatchers.IO) {
                 val testTasks = directStreams.map { streamLink ->
                     async {
                         semaphore.withPermit {
-                            try {
+                            val streamData = try {
                                 val request = requestBuilder.url(streamLink.url).build()
                                 val response = client.newCall(request).execute()
                                 response.use {
                                     val finalPlayableUrl = it.request.url.toString()
-                                    val totalBytes = it.header("Content-Range")?.substringAfter("/")
-                                        ?.toLongOrNull()
+                                    val totalBytes = if (it.code == 206) {
+                                        it.header("Content-Range")?.substringAfter("/")
+                                            ?.toLongOrNull()
+                                    } else if (it.code == 200) {
+                                        it.header("Content-Length")?.toLongOrNull()
+                                    } else {
+                                        null
+                                    }
                                     val sizeString = if (totalBytes != null) {
                                         if (totalBytes >= gigabyte) {
                                             String.format(
@@ -126,7 +143,8 @@ class DetailViewModel @AssistedInject constructor(
                                         isSeekSupported = (it.code == 206),
                                         isAlive = (it.code == 206 || it.code == 200),
                                         headers = streamHeaders,
-                                        verifiedSize = sizeString
+                                        verifiedSize = sizeString,
+                                        totalBytes = totalBytes
                                     )
                                 }
                             } catch (e: Exception) {
@@ -137,13 +155,27 @@ class DetailViewModel @AssistedInject constructor(
                                     isAlive = false
                                 )
                             }
+                            val currentDone = completedCount.incrementAndGet()
+                            _streamState.value = StreamUIState.Loading(
+                                progress = currentDone.toFloat() / directStreams.size.toFloat(),
+                                statusText = "Checking seek support...",
+                                streamCountText = "$currentDone / ${directStreams.size}"
+                            )
+                            delay(500)
+                            streamData
                         }
                     }
                 }
                 testTasks.awaitAll()
             }
+            delay(500)
             if (verifiedStreams.isNotEmpty()) {
-                _streamState.value = StreamUIState.Success(verifiedStreams)
+                val sortedStreams = verifiedStreams.sortedWith(
+                    compareByDescending<VerifiedStreamData> { it.isSeekSupported }.thenByDescending {
+                        it.totalBytes
+                    }
+                )
+                _streamState.value = StreamUIState.Success(sortedStreams)
             } else {
                 _streamState.value = StreamUIState.Error("No working servers found")
             }

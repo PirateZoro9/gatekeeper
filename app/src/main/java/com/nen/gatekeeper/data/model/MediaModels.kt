@@ -61,5 +61,6 @@ data class VerifiedStreamData(
     val isSeekSupported: Boolean = false,
     val isAlive: Boolean = true,
     val headers: Map<String, String> = emptyMap(),
-    val verifiedSize: String? = null
+    val verifiedSize: String? = null,
+    val totalBytes: Long? = null
 )
