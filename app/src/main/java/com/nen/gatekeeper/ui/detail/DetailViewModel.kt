@@ -25,6 +25,7 @@ import okhttp3.Request
 @HiltViewModel(assistedFactory = DetailViewModel.Factory::class)
 class DetailViewModel @AssistedInject constructor(
     private val mediaRepository: MediaRepository,
+    private val client: OkHttpClient,
     @Assisted private val detailUrl: String
 ) :
     ViewModel() {
@@ -35,7 +36,6 @@ class DetailViewModel @AssistedInject constructor(
 
     private val _uiState = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
     val uiState = _uiState.asStateFlow()
-    private val client = OkHttpClient()
 
     init {
         loadDetails()
@@ -62,11 +62,11 @@ class DetailViewModel @AssistedInject constructor(
         }
     }
 
-    private val _streamState = MutableStateFlow<StreamUIState>(StreamUIState.Idle)
-    val streamState = _streamState.asStateFlow()
+    private val _streamVerifierState = MutableStateFlow<StreamUIState>(StreamUIState.Idle)
+    val streamState = _streamVerifierState.asStateFlow()
     fun verifyStreams(urls: List<String>) {
         viewModelScope.launch {
-            _streamState.value = StreamUIState.Loading(
+            _streamVerifierState.value = StreamUIState.Loading(
                 progress = 0.10f,
                 statusText = "Finding best streams, hang tight..."
             )
@@ -96,7 +96,7 @@ class DetailViewModel @AssistedInject constructor(
                 .headers(streamHeaders.toHeaders())
                 .header("Range", "bytes=0-1")
 
-            _streamState.value = StreamUIState.Loading(
+            _streamVerifierState.value = StreamUIState.Loading(
                 progress = 0.30f,
                 statusText = "Found ${directStreams.size} streams! Testing seek...",
                 streamCountText = "0 / ${directStreams.size}"
@@ -156,7 +156,7 @@ class DetailViewModel @AssistedInject constructor(
                                 )
                             }
                             val currentDone = completedCount.incrementAndGet()
-                            _streamState.value = StreamUIState.Loading(
+                            _streamVerifierState.value = StreamUIState.Loading(
                                 progress = currentDone.toFloat() / directStreams.size.toFloat(),
                                 statusText = "Checking seek support...",
                                 streamCountText = "$currentDone / ${directStreams.size}"
@@ -170,14 +170,16 @@ class DetailViewModel @AssistedInject constructor(
             }
             delay(500)
             if (verifiedStreams.isNotEmpty()) {
-                val sortedStreams = verifiedStreams.sortedWith(
+                val sortedStreams = verifiedStreams.filter {
+                    it.isAlive
+                }.sortedWith(
                     compareByDescending<VerifiedStreamData> { it.isSeekSupported }.thenByDescending {
                         it.totalBytes
                     }
                 )
-                _streamState.value = StreamUIState.Success(sortedStreams)
+                _streamVerifierState.value = StreamUIState.Success(sortedStreams)
             } else {
-                _streamState.value = StreamUIState.Error("No working servers found")
+                _streamVerifierState.value = StreamUIState.Error("No working servers found")
             }
         }
     }

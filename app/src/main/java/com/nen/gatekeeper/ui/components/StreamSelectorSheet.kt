@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -131,6 +132,9 @@ fun StreamSelectorSheet(
         }
     }
 
+    var isMirrorsExpanded by remember {
+        mutableStateOf(false)
+    }
     if (isOpen) {
         ModalBottomSheet(
             sheetState = sheetState,
@@ -185,10 +189,17 @@ fun StreamSelectorSheet(
                     ) {
                         if (streamUIState is StreamUIState.Success) {
                             val streams = streamUIState.streams
-                            val bestStream = streams.firstOrNull()
-                            val otherStreams = streams.drop(1)
-
-                            bestStream?.let {
+                            val recommendedStream = streams.firstOrNull {
+                                it.isSeekSupported && it.isAlive
+                            }
+                            val otherStreams = if (recommendedStream != null) {
+                                streams.filter {
+                                    it.url != recommendedStream.url
+                                }
+                            } else {
+                                streams
+                            }
+                            recommendedStream?.let {
                                 item(key = it.url) {
                                     RecommendedStreamCard(
                                         stream = it,
@@ -197,15 +208,74 @@ fun StreamSelectorSheet(
                                 }
                             }
 
-                            items(items = otherStreams, key = { it.url }) {
+                            items(items = otherStreams.take(2), key = { it.url }) {
                                 MirrorStreamCard(
                                     stream = it,
                                     onPlayClick = {}
                                 )
                             }
+
+                            if (otherStreams.size > 2) {
+                                val remainingCount = otherStreams.size - 2
+                                if (isMirrorsExpanded) {
+                                    item {
+                                        Text(
+                                            text = "BACKUP MIRRORS ($remainingCount)",
+                                            style = TextStyle(
+                                                color = Color.White.copy(alpha = 0.40f),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = 0.5.sp
+                                            ),
+                                            modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
+                                        )
+                                    }
+                                    items(items = otherStreams.drop(2), key = { it.url }) {
+                                        MirrorStreamCard(
+                                            stream = it,
+                                            onPlayClick = {}
+                                        )
+                                    }
+                                }
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color.White.copy(alpha = 0.05f))
+                                            .border(
+                                                width = 1.dp,
+                                                color = Color.White.copy(alpha = 0.10f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable {
+                                                isMirrorsExpanded = !isMirrorsExpanded
+                                            }
+                                            .padding(vertical = 9.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = if (isMirrorsExpanded) {
+                                                "▲  Show Less Mirrors"
+                                            } else {
+                                                "▼  Show $remainingCount More Mirrors"
+                                            },
+                                            style = TextStyle(
+                                                color = Color(0xFFCCCCCC),
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                letterSpacing = 0.3.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
                         } else {
                             items(items = filteredLinks, key = { it.url }) { streamInfo ->
-                                StreamCard(streamInfo = streamInfo, streamUIState = streamUIState)
+                                StreamCard(
+                                    streamInfo = streamInfo,
+                                    streamUIState = streamUIState
+                                )
                             }
                         }
                     }

@@ -14,16 +14,10 @@ class MediaRepository @Inject constructor(private val api: MainApi) {
 
     // Fetch and deduplicate home rows
     suspend fun getHome(): Result<List<HomeRow>> = withContext(Dispatchers.IO) {
-        try {
-            val result = api.getHome()
-            val cleanedResult = result.map { row ->
+        safeApiCall {
+            api.getHome().map { row ->
                 row.copy(rowCards = row.rowCards.distinctBy { it.detailedUrl })
             }
-            Result.success(cleanedResult)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
@@ -32,23 +26,21 @@ class MediaRepository @Inject constructor(private val api: MainApi) {
         if (url.isBlank()) {
             return@withContext Result.failure(IllegalArgumentException("URL missing or expired"))
         }
-        try {
-            val details = api.getDetails(url)
-            Result.success(details)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        safeApiCall { api.getDetails(url) }
     }
 
     suspend fun getStreams(url: String): Result<List<StreamLink>> = withContext(Dispatchers.IO) {
         if (url.isBlank()) {
             return@withContext Result.failure(exception = IllegalArgumentException("URL missing or expired"))
         }
-        try {
-            val streamLinks = api.loadStreams(url)
-            Result.success(streamLinks)
+        safeApiCall {
+            api.loadStreams(url)
+        }
+    }
+
+    private inline fun <T> safeApiCall(block: () -> T): Result<T> {
+        return try {
+            Result.success(block())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
