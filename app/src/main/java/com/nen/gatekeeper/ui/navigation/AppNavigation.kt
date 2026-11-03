@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -24,12 +25,14 @@ import com.nen.gatekeeper.ui.home.HomeViewModel
 @Composable
 fun AppNavigation(
     backStack: NavBackStack<NavKey> = rememberNavBackStack(Home),
-    innerPadding: PaddingValues
+    innerPadding: PaddingValues,
+    modifier: Modifier = Modifier
 ) {
     val fadeTransition =
         fadeIn(animationSpec = tween(500)) togetherWith fadeOut(animationSpec = tween(500))
 
     NavDisplay(
+        modifier = modifier,
         transitionSpec = { fadeTransition },
         popTransitionSpec = { fadeTransition },
         predictivePopTransitionSpec = { fadeTransition },
@@ -51,10 +54,10 @@ fun AppNavigation(
                     }
                 )
             }
-            entry<Detail> { cardUrl ->
+            entry<Detail> { detailKey ->
                 val viewModel: DetailViewModel = hiltViewModel(
                     creationCallback = { factor: DetailViewModel.Factory ->
-                        factor.create(cardUrl.detailUrl)
+                        factor.create(detailKey.detailUrl)
                     }
                 )
                 DetailScreen(

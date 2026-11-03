@@ -18,6 +18,11 @@ val TextTertiary = Color(0xFF777777)
 val Accent = Color(0xFFFF5C39)
 val AccentPressed = Color(0xFFD63F22)
 
+// Stream badge & status colors
+val StreamOrange = Color(0xFFFFA726)
+val StreamVerified = Color(0xFF00FF88)
+val StarGold = Color(0xFFFFC107)
+
 // Shimmer colors
 val ShimmerBase = Color(0xFF30343A)
 val ShimmerHighlight = Color(0xFF494E56)

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.nen.gatekeeper.data.model.CardDetails
 import com.nen.gatekeeper.data.model.HomeRow
 import com.nen.gatekeeper.ui.components.AppImage
-import com.nen.gatekeeper.ui.theme.AppRadius
+import com.nen.gatekeeper.ui.theme.AppShapes
 import com.nen.gatekeeper.ui.theme.AppSizes
 import com.nen.gatekeeper.ui.theme.AppSpacing
 
@@ -47,12 +46,12 @@ fun HomeCategoryRow(
             modifier = Modifier.padding(
                 start = AppSpacing.medium,
                 end = AppSpacing.medium,
-                top = 8.dp,
+                top = AppSpacing.cardGap,
                 bottom = 6.dp
             ),
             text = row.rowTitle,
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
@@ -81,8 +80,7 @@ fun MovieCard(
             modifier = Modifier
                 .width(AppSizes.posterWidth)
                 .aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(AppRadius.card))
-                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .clip(shape = AppShapes.inner)
                 .clickable(onClick = onClick)
         ) {
             AppImage(
@@ -107,7 +105,7 @@ fun MovieCard(
                 .padding(horizontal = 2.dp),
             text = card.title,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -132,12 +130,12 @@ fun MetaBadge(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(shape = AppShapes.badge)
             .background(Color.White.copy(alpha = 0.11f))
             .border(
                 width = 1.dp,
                 color = Color.White.copy(alpha = 0.20f),
-                shape = RoundedCornerShape(4.dp)
+                shape = AppShapes.badge
             )
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {

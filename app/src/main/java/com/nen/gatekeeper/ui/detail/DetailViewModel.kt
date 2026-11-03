@@ -8,7 +8,9 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
@@ -62,11 +64,13 @@ class DetailViewModel @AssistedInject constructor(
         }
     }
 
-    private val _streamVerifierState = MutableStateFlow<StreamUIState>(StreamUIState.Idle)
+    private val _streamVerifierState = MutableStateFlow<StreamUiState>(StreamUiState.Idle)
     val streamState = _streamVerifierState.asStateFlow()
+    private var verifierJob: Job? = null
     fun verifyStreams(urls: List<String>) {
-        viewModelScope.launch {
-            _streamVerifierState.value = StreamUIState.Loading(
+        verifierJob?.cancel()
+        verifierJob = viewModelScope.launch {
+            _streamVerifierState.value = StreamUiState.Loading(
                 progress = 0.10f,
                 statusText = "Finding best streams, hang tight..."
             )
@@ -85,6 +89,11 @@ class DetailViewModel @AssistedInject constructor(
                 it.getOrNull()
             }.flatten()
 
+            if (directStreams.isEmpty()) {
+                _streamVerifierState.value = StreamUiState.Error("No streams found")
+                return@launch
+            }
+
             val streamHeaders = mapOf(
                 "User-Agent" to "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.146 Mobile Safari/537.36",
                 "Accept" to "*/*",
@@ -92,11 +101,8 @@ class DetailViewModel @AssistedInject constructor(
                 "Sec-CH-UA-Mobile" to "?1",
                 "Sec-CH-UA-Platform" to "\"Android\""
             )
-            val requestBuilder = Request.Builder()
-                .headers(streamHeaders.toHeaders())
-                .header("Range", "bytes=0-1")
 
-            _streamVerifierState.value = StreamUIState.Loading(
+            _streamVerifierState.value = StreamUiState.Loading(
                 progress = 0.30f,
                 statusText = "Found ${directStreams.size} streams! Testing seek...",
                 streamCountText = "0 / ${directStreams.size}"
@@ -107,6 +113,9 @@ class DetailViewModel @AssistedInject constructor(
                 val testTasks = directStreams.map { streamLink ->
                     async {
                         semaphore.withPermit {
+                            val requestBuilder = Request.Builder()
+                                .headers(streamHeaders.toHeaders())
+                                .header("Range", "bytes=0-1")
                             val streamData = try {
                                 val request = requestBuilder.url(streamLink.url).build()
                                 val response = client.newCall(request).execute()
@@ -147,6 +156,8 @@ class DetailViewModel @AssistedInject constructor(
                                         totalBytes = totalBytes
                                     )
                                 }
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 VerifiedStreamData(
                                     name = streamLink.name,
@@ -156,7 +167,7 @@ class DetailViewModel @AssistedInject constructor(
                                 )
                             }
                             val currentDone = completedCount.incrementAndGet()
-                            _streamVerifierState.value = StreamUIState.Loading(
+                            _streamVerifierState.value = StreamUiState.Loading(
                                 progress = currentDone.toFloat() / directStreams.size.toFloat(),
                                 statusText = "Checking seek support...",
                                 streamCountText = "$currentDone / ${directStreams.size}"
@@ -169,18 +180,22 @@ class DetailViewModel @AssistedInject constructor(
                 testTasks.awaitAll()
             }
             delay(500)
-            if (verifiedStreams.isNotEmpty()) {
-                val sortedStreams = verifiedStreams.filter {
-                    it.isAlive
-                }.sortedWith(
+            val aliveStreams = verifiedStreams.filter { it.isAlive }
+            if (aliveStreams.isNotEmpty()) {
+                val sortedStreams = aliveStreams.sortedWith(
                     compareByDescending<VerifiedStreamData> { it.isSeekSupported }.thenByDescending {
                         it.totalBytes
                     }
                 )
-                _streamVerifierState.value = StreamUIState.Success(sortedStreams)
+                _streamVerifierState.value = StreamUiState.Success(sortedStreams)
             } else {
-                _streamVerifierState.value = StreamUIState.Error("No working servers found")
+                _streamVerifierState.value = StreamUiState.Error("No working servers found")
             }
         }
+    }
+
+    fun resetStreamVerifier() {
+        verifierJob?.cancel()
+        _streamVerifierState.value = StreamUiState.Idle
     }
 }

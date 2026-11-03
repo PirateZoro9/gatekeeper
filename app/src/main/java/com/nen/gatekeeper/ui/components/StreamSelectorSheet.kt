@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Info
@@ -62,7 +61,11 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nen.gatekeeper.data.model.StreamLink
-import com.nen.gatekeeper.ui.detail.StreamUIState
+import com.nen.gatekeeper.ui.detail.StreamUiState
+import com.nen.gatekeeper.ui.theme.AppShapes
+import com.nen.gatekeeper.ui.theme.AppSpacing
+import com.nen.gatekeeper.ui.theme.StreamVerified
+import com.nen.gatekeeper.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
 // Main modal bottom sheet for stream source and quality selection
@@ -74,7 +77,7 @@ fun StreamSelectorSheet(
     isOpen: Boolean,
     onDismiss: () -> Unit,
     onVerifyClick: (List<String>) -> Unit,
-    streamUIState: StreamUIState
+    streamUIState: StreamUiState
 ) {
     // Quality chip filter state
     var selectedQuality by rememberSaveable {
@@ -147,7 +150,7 @@ fun StreamSelectorSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = screenHeight * 0.75f)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = AppSpacing.medium, vertical = AppSpacing.cardGap)
                     .animateContentSize(
                         animationSpec = tween(
                             durationMillis = 350,
@@ -178,6 +181,21 @@ fun StreamSelectorSheet(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    val (recommendedStream, otherStreams) = remember(streamUIState) {
+                        if (streamUIState is StreamUiState.Success) {
+                            val streams = streamUIState.streams
+                            val recommendedStream =
+                                streams.firstOrNull { it.isSeekSupported && it.isAlive }
+                            val otherStreams = if (recommendedStream != null) {
+                                streams.filter { it.url != recommendedStream.url }
+                            } else {
+                                streams
+                            }
+                            recommendedStream to otherStreams
+                        } else {
+                            null to emptyList()
+                        }
+                    }
                     // Stream links list
                     LazyColumn(
                         modifier = Modifier
@@ -185,20 +203,9 @@ fun StreamSelectorSheet(
                             .weight(1f, fill = false)
                             .nestedScroll(speedStopper),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
+                        contentPadding = PaddingValues(bottom = AppSpacing.medium)
                     ) {
-                        if (streamUIState is StreamUIState.Success) {
-                            val streams = streamUIState.streams
-                            val recommendedStream = streams.firstOrNull {
-                                it.isSeekSupported && it.isAlive
-                            }
-                            val otherStreams = if (recommendedStream != null) {
-                                streams.filter {
-                                    it.url != recommendedStream.url
-                                }
-                            } else {
-                                streams
-                            }
+                        if (streamUIState is StreamUiState.Success) {
                             recommendedStream?.let {
                                 item(key = it.url) {
                                     RecommendedStreamCard(
@@ -241,12 +248,12 @@ fun StreamSelectorSheet(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(AppShapes.inner)
                                             .background(Color.White.copy(alpha = 0.05f))
                                             .border(
                                                 width = 1.dp,
                                                 color = Color.White.copy(alpha = 0.10f),
-                                                shape = RoundedCornerShape(8.dp)
+                                                shape = AppShapes.inner
                                             )
                                             .clickable {
                                                 isMirrorsExpanded = !isMirrorsExpanded
@@ -261,7 +268,7 @@ fun StreamSelectorSheet(
                                                 "▼  Show $remainingCount More Mirrors"
                                             },
                                             style = TextStyle(
-                                                color = Color(0xFFCCCCCC),
+                                                color = TextSecondary,
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 letterSpacing = 0.3.sp
@@ -273,8 +280,7 @@ fun StreamSelectorSheet(
                         } else {
                             items(items = filteredLinks, key = { it.url }) { streamInfo ->
                                 StreamCard(
-                                    streamInfo = streamInfo,
-                                    streamUIState = streamUIState
+                                    streamInfo = streamInfo
                                 )
                             }
                         }
@@ -294,7 +300,7 @@ fun StreamSheetHeader(
     title: String,
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier,
-    streamUIState: StreamUIState
+    streamUIState: StreamUiState
 ) {
     Column() {
         Row(
@@ -308,11 +314,11 @@ fun StreamSheetHeader(
                 Text(
                     text = "Available Sources & Qualities",
                     style = TextStyle(
-                        color = Color(0xFF00FF88),
+                        color = StreamVerified,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         shadow = Shadow(
-                            color = Color(0xFF00FF88).copy(alpha = 0.50f),
+                            color = StreamVerified.copy(alpha = 0.50f),
                             offset = Offset(0f, 0f),
                             blurRadius = 12f
                         )
@@ -335,14 +341,16 @@ fun StreamSheetHeader(
             }
         }
         var loadingState by remember {
-            mutableStateOf<StreamUIState.Loading?>(null)
+            mutableStateOf<StreamUiState.Loading?>(null)
         }
 
-        if (streamUIState is StreamUIState.Loading) {
-            loadingState = streamUIState
+        LaunchedEffect(streamUIState) {
+            if (streamUIState is StreamUiState.Loading) {
+                loadingState = streamUIState
+            }
         }
         AnimatedVisibility(
-            visible = streamUIState is StreamUIState.Loading,
+            visible = streamUIState is StreamUiState.Loading,
             enter = fadeIn(tween(300)) + expandVertically(tween(300)),
             exit = fadeOut(tween(300)) + shrinkVertically(tween(300))
         ) {
@@ -351,7 +359,7 @@ fun StreamSheetHeader(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(AppShapes.inner)
                         .background(Color.White.copy(alpha = 0.06f))
                         .padding(10.dp)
                 ) {
@@ -362,7 +370,7 @@ fun StreamSheetHeader(
                     ) {
                         Text(
                             text = loading.statusText,
-                            color = Color(0xFF00FF88),
+                            color = StreamVerified,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = 0.2.sp
@@ -382,7 +390,7 @@ fun StreamSheetHeader(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(4.dp),
-                        color = Color(0xFF00FF88),
+                        color = StreamVerified,
                         trackColor = Color.White.copy(alpha = 0.1f),
                         drawStopIndicator = {},
                         gapSize = 0.dp
@@ -399,7 +407,7 @@ fun StreamEmptyState(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 32.dp, horizontal = 16.dp),
+            .padding(vertical = AppSpacing.extraLarge, horizontal = AppSpacing.medium),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -436,4 +444,13 @@ fun StreamEmptyState(modifier: Modifier = Modifier) {
             textAlign = TextAlign.Center
         )
     }
+}
+
+// Rank higher resolution qualities first
+fun qualityRank(q: String): Int = when {
+    q.contains("4K", ignoreCase = true) || q.contains("2160") -> 4
+    q.contains("1080") -> 3
+    q.contains("720") -> 2
+    q.contains("480") -> 1
+    else -> 0
 }

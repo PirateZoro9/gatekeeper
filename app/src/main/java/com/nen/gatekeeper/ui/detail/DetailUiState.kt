@@ -1,8 +1,10 @@
 package com.nen.gatekeeper.ui.detail
 
+import androidx.compose.runtime.Immutable
 import com.nen.gatekeeper.data.model.MediaDetails
 import com.nen.gatekeeper.data.model.VerifiedStreamData
 
+@Immutable
 sealed interface DetailUiState {
     data object Loading : DetailUiState
 
@@ -13,14 +15,15 @@ sealed interface DetailUiState {
     data object Empty : DetailUiState
 }
 
-sealed interface StreamUIState {
-    data object Idle : StreamUIState
+@Immutable
+sealed interface StreamUiState {
+    data object Idle : StreamUiState
     data class Loading(
         val progress: Float = 0f,
         val statusText: String = "",
         val streamCountText: String = ""
-    ) : StreamUIState
+    ) : StreamUiState
 
-    data class Success(val streams: List<VerifiedStreamData>) : StreamUIState
-    data class Error(val message: String) : StreamUIState
+    data class Success(val streams: List<VerifiedStreamData>) : StreamUiState
+    data class Error(val message: String) : StreamUiState
 }

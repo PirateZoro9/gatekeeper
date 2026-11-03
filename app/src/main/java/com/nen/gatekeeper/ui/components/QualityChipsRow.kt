@@ -24,6 +24,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nen.gatekeeper.data.model.StreamLink
+import com.nen.gatekeeper.ui.theme.AppShapes
+import com.nen.gatekeeper.ui.theme.AppSpacing
+import com.nen.gatekeeper.ui.theme.StreamVerified
 import kotlinx.coroutines.launch
 
 // Horizontal quality filter chips with edge fading and verify seek button
@@ -59,10 +63,22 @@ fun QualityChipsRow(
         animationSpec = tween(300)
     )
     val rightFadeColor by animateColorAsState(
-        targetValue = if (listState.canScrollForward) Color.Transparent else Color.Black.copy(),
+        targetValue = if (listState.canScrollForward) Color.Transparent else Color.Black,
         animationSpec = tween(300)
     )
 
+    val qualityCounts = remember(streamLinks) {
+        streamLinks.groupingBy { it.quality }.eachCount()
+    }
+
+    val fadeBrush = remember(leftFadeColor, rightFadeColor) {
+        Brush.horizontalGradient(
+            0.0f to leftFadeColor,
+            0.08f to Color.Black,
+            0.88f to Color.Black,
+            1.00f to rightFadeColor
+        )
+    }
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -76,27 +92,19 @@ fun QualityChipsRow(
                 )
                 .drawWithContent {
                     drawContent()
-                    val brush = Brush.horizontalGradient(
-                        0.0f to leftFadeColor,
-                        0.08f to Color.Black,
-                        0.88f to Color.Black,
-                        1.00f to rightFadeColor
-                    )
                     drawRect(
-                        brush = brush,
+                        brush = fadeBrush,
                         blendMode = BlendMode.DstIn
                     )
                 },
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
         ) {
             itemsIndexed(qualityList) { index, quality ->
                 val isSelected = selectedQuality == quality
                 val count = if (quality == "All") {
                     streamLinks.size
                 } else {
-                    streamLinks.count {
-                        it.quality == quality
-                    }
+                    qualityCounts[quality] ?: 0
                 }
                 QualityChipItem(
                     quality = quality,
@@ -116,14 +124,14 @@ fun QualityChipsRow(
 
         Button(
             onClick = onVerifyClick,
-            shape = RoundedCornerShape(8.dp),
+            shape = AppShapes.inner,
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White.copy(alpha = 0.08f),
-                contentColor = Color(0xFF00FF88)
+                contentColor = StreamVerified
             ),
             border = BorderStroke(
                 width = 1.dp,
-                color = Color(0xFF00FF88).copy(alpha = 0.5f)
+                color = StreamVerified.copy(alpha = 0.5f)
             ),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
             modifier = Modifier.height(34.dp)
@@ -148,7 +156,7 @@ fun QualityChipItem(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(AppShapes.inner)
             .background(
                 color = if (isSelected) Color.White else Color.White.copy(
                     alpha = 0.08f
@@ -159,7 +167,7 @@ fun QualityChipItem(
                 color = if (isSelected) Color.White else Color.White.copy(
                     alpha = 0.14f
                 ),
-                shape = RoundedCornerShape(8.dp)
+                shape = AppShapes.inner
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 7.dp),
@@ -172,13 +180,4 @@ fun QualityChipItem(
             color = if (isSelected) Color.Black else Color.White
         )
     }
-}
-
-// Rank higher resolution qualities first
-fun qualityRank(q: String): Int = when {
-    q.contains("4K", ignoreCase = true) || q.contains("2160") -> 4
-    q.contains("1080") -> 3
-    q.contains("720") -> 2
-    q.contains("480") -> 1
-    else -> 0
 }

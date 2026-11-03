@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.PlayArrow
@@ -34,6 +33,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nen.gatekeeper.data.model.VerifiedStreamData
+import com.nen.gatekeeper.ui.theme.AppShapes
+import com.nen.gatekeeper.ui.theme.AppSpacing
+import com.nen.gatekeeper.ui.theme.StreamOrange
+import com.nen.gatekeeper.ui.theme.StreamVerified
 
 @Composable
 fun RecommendedStreamCard(
@@ -44,31 +47,31 @@ fun RecommendedStreamCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(AppShapes.card)
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0xFF00FF88).copy(alpha = 0.15f),
+                        StreamVerified.copy(alpha = 0.15f),
                         Color.Black.copy(alpha = 0.65f)
                     )
                 )
             )
             .border(
                 width = 1.dp,
-                color = Color(0xFF00FF88).copy(alpha = 0.40f),
-                shape = RoundedCornerShape(12.dp)
+                color = StreamVerified.copy(alpha = 0.40f),
+                shape = AppShapes.card
             )
-            .padding(12.dp)
+            .padding(AppSpacing.small)
     ) {
-        Column() {
+        Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(shape = RoundedCornerShape(3.dp))
-                        .background(Color(0xFF00FF88))
+                        .clip(AppShapes.badge)
+                        .background(StreamVerified)
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Row(
@@ -92,66 +95,20 @@ fun RecommendedStreamCard(
                         )
                     }
                 }
+
                 if (stream.isSeekSupported && stream.isAlive) {
                     Spacer(modifier = Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFF00FF88).copy(alpha = 0.15f))
-                            .border(
-                                width = 1.dp,
-                                color = Color(0xFF00FF88).copy(alpha = 0.35f),
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Bolt,
-                                contentDescription = null,
-                                tint = Color(0xFFFFA726),
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = "Seek",
-                                style = TextStyle(
-                                    color = Color(0xFF00FF88),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.2.sp
-                                )
-                            )
-                        }
-                    }
+                    SeekBadge(isSeekSupported = true)
                 }
+
                 stream.verifiedSize?.let { sizeText ->
                     Spacer(modifier = Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFFFFA726).copy(alpha = 0.15f))
-                            .border(
-                                width = 1.dp,
-                                color = Color(0xFFFFA726).copy(alpha = 0.35f),
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 7.dp, vertical = 3.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = sizeText,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFA726),
-                            letterSpacing = 0.5.sp
-                        )
-                    }
+                    SizeBadge(sizeText = sizeText)
                 }
             }
+
             Spacer(modifier = Modifier.height(10.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -168,9 +125,9 @@ fun RecommendedStreamCard(
                 Spacer(modifier = Modifier.width(10.dp))
                 Button(
                     onClick = onPlayClick,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = AppShapes.inner,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00FF88),
+                        containerColor = StreamVerified,
                         contentColor = Color.Black
                     ),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
@@ -204,12 +161,12 @@ fun MirrorStreamCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(9.dp))
+            .clip(AppShapes.inner)
             .background(Color.White.copy(alpha = 0.04f))
             .border(
                 width = 1.dp,
                 color = Color.White.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(9.dp)
+                shape = AppShapes.inner
             )
             .padding(10.dp)
     ) {
@@ -220,63 +177,10 @@ fun MirrorStreamCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(
-                            if (stream.isSeekSupported) Color(0xFF00FF88).copy(alpha = 0.15f)
-                            else Color.White.copy(alpha = 0.05f)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = if (stream.isSeekSupported) Color(0xFF00FF88).copy(alpha = 0.35f)
-                            else Color.White.copy(alpha = 0.10f),
-                            shape = RoundedCornerShape(4.dp)
-                        )
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        if (stream.isSeekSupported) {
-                            Icon(
-                                imageVector = Icons.Filled.Bolt,
-                                contentDescription = null,
-                                tint = Color(0xFFFFA726),
-                                modifier = Modifier.size(11.dp)
-                            )
-                        }
-                        Text(
-                            text = if (stream.isSeekSupported) "Seek" else "No Seek",
-                            color = if (stream.isSeekSupported) Color(0xFF00FF88)
-                            else Color.White.copy(alpha = 0.40f),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                SeekBadge(isSeekSupported = stream.isSeekSupported)
+
                 stream.verifiedSize?.let { sizeText ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFFFFA726).copy(alpha = 0.15f))
-                            .border(
-                                width = 1.dp,
-                                color = Color(0xFFFFA726).copy(alpha = 0.35f),
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = sizeText,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFA726),
-                            letterSpacing = 0.5.sp
-                        )
-                    }
+                    SizeBadge(sizeText = sizeText)
                 }
             }
 
@@ -299,10 +203,10 @@ fun MirrorStreamCard(
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = onPlayClick,
-                    shape = RoundedCornerShape(6.dp),
+                    shape = AppShapes.badge,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00FF88).copy(alpha = 0.15f),
-                        contentColor = Color(0xFF00FF88)
+                        containerColor = StreamVerified.copy(alpha = 0.15f),
+                        contentColor = StreamVerified
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     modifier = Modifier.height(30.dp)
@@ -310,7 +214,7 @@ fun MirrorStreamCard(
                     Icon(
                         imageVector = Icons.Filled.PlayArrow,
                         contentDescription = "Play",
-                        tint = Color(0xFF00FF88),
+                        tint = StreamVerified,
                         modifier = Modifier.size(13.dp)
                     )
                     Spacer(modifier = Modifier.width(2.dp))
@@ -318,10 +222,79 @@ fun MirrorStreamCard(
                         text = "Play",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF00FF88)
+                        color = StreamVerified
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SeekBadge(
+    isSeekSupported: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val bgColor = if (isSeekSupported) StreamVerified.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
+    val borderColor = if (isSeekSupported) StreamVerified.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.10f)
+    val textColor = if (isSeekSupported) StreamVerified else Color.White.copy(alpha = 0.40f)
+
+    Box(
+        modifier = modifier
+            .clip(AppShapes.badge)
+            .background(bgColor)
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = AppShapes.badge
+            )
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            if (isSeekSupported) {
+                Icon(
+                    imageVector = Icons.Filled.Bolt,
+                    contentDescription = null,
+                    tint = StreamOrange,
+                    modifier = Modifier.size(11.dp)
+                )
+            }
+            Text(
+                text = if (isSeekSupported) "Seek" else "No Seek",
+                color = textColor,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun SizeBadge(
+    sizeText: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(AppShapes.badge)
+            .background(StreamOrange.copy(alpha = 0.15f))
+            .border(
+                width = 1.dp,
+                color = StreamOrange.copy(alpha = 0.35f),
+                shape = AppShapes.badge
+            )
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = sizeText,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = StreamOrange,
+            letterSpacing = 0.5.sp
+        )
     }
 }

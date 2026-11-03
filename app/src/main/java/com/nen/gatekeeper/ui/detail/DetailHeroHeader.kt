@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
@@ -38,7 +39,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nen.gatekeeper.ui.components.AppImage
-import com.nen.gatekeeper.ui.theme.AppRadius
+import com.nen.gatekeeper.ui.theme.AppShapes
+import com.nen.gatekeeper.ui.theme.AppSpacing
+import com.nen.gatekeeper.ui.theme.StarGold
 
 // Hero header with poster, title, rating, and play button
 @Composable
@@ -54,7 +57,7 @@ fun DetailHeroHeader(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(3f / 4f)
-            .clip(shape = RoundedCornerShape(AppRadius.hero))
+            .clip(shape = AppShapes.card)
     ) {
         AppImage(
             posterUrl = posterUrl,
@@ -83,7 +86,9 @@ fun DetailHeroHeader(
                 }
         )
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = AppSpacing.medium, vertical = AppSpacing.medium),
             verticalArrangement = Arrangement.Bottom,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -121,12 +126,12 @@ fun RatingBadge(
 ) {
     Box(
         modifier = modifier
-            .clip(shape = RoundedCornerShape(4.dp))
+            .clip(shape = AppShapes.badge)
             .background(color = Color.White.copy(alpha = 0.12f))
             .border(
                 width = 1.dp,
                 color = Color.White.copy(alpha = 0.25f),
-                shape = RoundedCornerShape(4.dp)
+                shape = AppShapes.badge
             )
             .padding(horizontal = 8.dp, vertical = 2.dp)
     ) {
@@ -136,7 +141,7 @@ fun RatingBadge(
             Icon(
                 imageVector = Icons.Filled.Star,
                 contentDescription = null,
-                tint = Color(0xFFFFC107),
+                tint = StarGold,
                 modifier = Modifier.size(13.dp)
             )
             Spacer(modifier = Modifier.width(3.dp))
@@ -158,29 +163,32 @@ fun DetailGenreChips(
     modifier: Modifier = Modifier
 ) {
     genres.takeIf { it.isNotEmpty() }?.let { genreList ->
-        Spacer(modifier = Modifier.height(6.dp))
         FlowRow(
             modifier = modifier.fillMaxWidth(),
             maxItemsInEachRow = 5,
             horizontalArrangement = Arrangement.spacedBy(
-                8.dp,
+                AppSpacing.cardGap,
                 Alignment.CenterHorizontally
             ),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
         ) {
             genreList.take(7).forEach { genre ->
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
+                        .clip(shape = CircleShape)
                         .background(color = Color.White.copy(alpha = 0.05f))
                         .border(
                             1.dp,
                             Color.White.copy(alpha = 0.25f),
-                            RoundedCornerShape(50)
+                            shape = CircleShape
                         )
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    Text(text = genre, fontSize = 12.sp)
+                    Text(
+                        text = genre,
+                        fontSize = 12.sp,
+                        color = Color.White
+                    )
                 }
             }
         }

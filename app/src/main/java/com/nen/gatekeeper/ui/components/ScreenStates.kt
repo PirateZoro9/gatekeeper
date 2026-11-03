@@ -44,18 +44,9 @@ fun ErrorState(
     modifier: Modifier = Modifier,
     onRetry: () -> Unit
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(vertical = AppSpacing.small),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimary
-        )
-        OutlinedButton(onClick = onRetry) { Text(text = "Retry") }
-    }
+    EmptyState(
+        message = message,
+        modifier = modifier,
+        onRetry = onRetry
+    )
 }

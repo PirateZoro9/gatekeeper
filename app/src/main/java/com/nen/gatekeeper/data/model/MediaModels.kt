@@ -23,7 +23,14 @@ data class StreamLink(
     val quality: String,      // e.g., "1080p", "720p", "480p", "Unknown"
     val url: String,          // Stream or redirect URL
     val size: String? = null  // e.g., "1.4 GB"
-)
+) {
+    val displayQuality: String
+        get() = if (quality.contains("4k", ignoreCase = true) || quality.contains("2160")) {
+            "2160p / 4K"
+        } else {
+            quality
+        }
+}
 
 // Detailed media information for movies and series
 data class MediaDetails(

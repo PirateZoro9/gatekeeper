@@ -7,13 +7,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -23,6 +23,7 @@ import com.nen.gatekeeper.data.model.StreamLink
 import com.nen.gatekeeper.ui.components.EmptyState
 import com.nen.gatekeeper.ui.components.ErrorState
 import com.nen.gatekeeper.ui.components.StreamSelectorSheet
+import com.nen.gatekeeper.ui.theme.AppSpacing
 
 // Media detail screen with hero, meta, seasons, and stream sheet
 @Composable
@@ -32,6 +33,7 @@ fun DetailScreen(
     contentPadding: PaddingValues
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val streamState by viewModel.streamState.collectAsStateWithLifecycle()
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -52,7 +54,9 @@ fun DetailScreen(
                         DetailContent(
                             mediaDetail = state.detailPage,
                             contentPadding = contentPadding,
-                            viewModel = viewModel
+                            streamState = streamState,
+                            onVerifyClick = { urls -> viewModel.verifyStreams(urls) },
+                            onResetVerifier = { viewModel.resetStreamVerifier() }
                         )
                     }
 
@@ -74,10 +78,11 @@ fun DetailScreen(
 fun DetailContent(
     mediaDetail: MediaDetails,
     contentPadding: PaddingValues,
-    viewModel: DetailViewModel
+    streamState: StreamUiState,
+    onVerifyClick: (List<String>) -> Unit,
+    onResetVerifier: () -> Unit
 ) {
-    val streamState by viewModel.streamState.collectAsStateWithLifecycle()
-    var showStreamSheet by rememberSaveable {
+    var showStreamSheet by remember {
         mutableStateOf(false)
     }
     var activeSheetTitle by remember {
@@ -92,12 +97,13 @@ fun DetailContent(
         )
     ) {
         // Hero header
-        item {
+        item(key = "hero_header") {
             DetailHeroHeader(
                 posterUrl = mediaDetail.posterUrl,
                 title = mediaDetail.title,
                 rating = mediaDetail.rating,
                 onPlayClick = {
+                    onResetVerifier()
                     activeSheetTitle = mediaDetail.title
                     activeStreamLinks = mediaDetail.streamLinks
                     showStreamSheet = true
@@ -106,22 +112,28 @@ fun DetailContent(
         }
 
         // Genres
-        item { DetailGenreChips(genres = mediaDetail.genres) }
+        item(key = "genre_chips") {
+            DetailGenreChips(
+                genres = mediaDetail.genres,
+                modifier = Modifier.padding(top = AppSpacing.cardGap)
+            )
+        }
 
         // Synopsis
-        item {
+        item(key = "synopsis") {
             mediaDetail.synopsis?.let { synopsisText ->
                 DetailSynopsisSection(synopsis = synopsisText)
             }
         }
 
         // Series: Seasons & Episodes
-        item {
+        item(key = "series_section") {
             if (mediaDetail.isSeries) {
                 DetailSeriesSection(
                     mediaDetail.seasons,
                     posterUrl = mediaDetail.posterUrl,
                     onEpisodeClick = { episode, seasonBadge ->
+                        onResetVerifier()
                         activeSheetTitle = "${mediaDetail.title} • $seasonBadge"
                         activeStreamLinks = episode.episodeLinks
                         showStreamSheet = true
@@ -138,9 +150,10 @@ fun DetailContent(
         isOpen = showStreamSheet,
         onDismiss = {
             showStreamSheet = false
+            onResetVerifier()
         },
         onVerifyClick = { urls ->
-            viewModel.verifyStreams(urls)
+            onVerifyClick(urls)
         },
         streamUIState = streamState
     )

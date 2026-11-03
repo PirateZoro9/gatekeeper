@@ -14,9 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +41,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.nen.gatekeeper.data.model.CardDetails
 import com.nen.gatekeeper.ui.components.AppImage
-import com.nen.gatekeeper.ui.theme.AppRadius
+import com.nen.gatekeeper.ui.theme.AppShapes
+import com.nen.gatekeeper.ui.theme.AppSpacing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -61,25 +62,21 @@ fun HeroCarousel(
         initialPage = Int.MAX_VALUE / 2 - (Int.MAX_VALUE / 2) % heroCards.size,
         pageCount = { Int.MAX_VALUE }
     )
-    val currentPage = pagerState.currentPage
-    val currentPageList = listOf(
-        (currentPage - 1).coerceAtLeast(0),
-        currentPage,
-        (currentPage + 1).coerceAtMost(pagerState.pageCount - 1)
-    )
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(heroCards) {
-        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) {
-                delay(7000)
-                try {
-                    if (!pagerState.isScrollInProgress) {
-                        val nextPage = pagerState.currentPage + 1
-                        pagerState.animateScrollToPage(nextPage, animationSpec = tween(1500))
+        if (heroCards.size > 1) {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    delay(7000)
+                    try {
+                        if (!pagerState.isScrollInProgress) {
+                            val nextPage = pagerState.currentPage + 1
+                            pagerState.animateScrollToPage(nextPage, animationSpec = tween(1500))
+                        }
+                    } catch (signal: CancellationException) {
+                        currentCoroutineContext().ensureActive()
                     }
-                } catch (signal: CancellationException) {
-                    currentCoroutineContext().ensureActive()
                 }
             }
         }
@@ -90,7 +87,7 @@ fun HeroCarousel(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(4f / 5f)
-            .clip(shape = RoundedCornerShape(AppRadius.hero))
+            .clip(shape = AppShapes.card)
     ) {
         HorizontalPager(
             state = pagerState,
@@ -99,11 +96,12 @@ fun HeroCarousel(
         ) { page ->
             val hero = heroCards[page % heroCards.size]
             val hasMeta = hero.releaseYear != null || hero.rating != null || hero.qualityTag != null
-            val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
 
             Box(
                 modifier = Modifier
                     .graphicsLayer {
+                        val pageOffset =
+                            (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                         translationX = size.width * pageOffset
                         alpha = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
                     }
@@ -114,6 +112,8 @@ fun HeroCarousel(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
+                            val pageOffset =
+                                (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                             translationX = -pageOffset * size.width * 0.055f
                             scaleX = 1.14f
                             scaleY = scaleX
@@ -142,7 +142,7 @@ fun HeroCarousel(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 24.dp, vertical = 44.dp),
+                        .padding(horizontal = AppSpacing.large, vertical = 44.dp),
                     verticalArrangement = Arrangement.Bottom,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -156,12 +156,12 @@ fun HeroCarousel(
                         overflow = TextOverflow.Ellipsis
                     )
                     if (hasMeta) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppSpacing.cardGap))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(
-                                8.dp,
+                                AppSpacing.cardGap,
                                 Alignment.CenterHorizontally
                             )
                         ) {
@@ -170,7 +170,7 @@ fun HeroCarousel(
                             hero.qualityTag?.let { MetaBadge(it) }
                         }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(AppSpacing.small))
                     Button(
                         onClick = { onCardClick(hero.detailedUrl) },
                         colors = ButtonDefaults.buttonColors(
@@ -183,33 +183,52 @@ fun HeroCarousel(
                 }
             }
         }
+        if (heroCards.size > 1) {
+            CarouselIndicators(
+                heroCardsCount = heroCards.size,
+                pagerState = pagerState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = AppSpacing.medium)
+            )
+        }
+    }
+}
 
-        // Indicators
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            heroCards.indices.forEach { index ->
-                val page = currentPageList.firstOrNull { it % heroCards.size == index }
-                val fraction = if (page == null) {
-                    0f
-                } else {
-                    val pageOffset = (currentPage - page) + pagerState.currentPageOffsetFraction
-                    (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(
-                            MaterialTheme.colorScheme.onBackground
-                                .copy(alpha = 0.35f + 0.57f * fraction)
-                        )
-                        .width(8.dp + 24.dp * fraction)
-                        .height(8.dp)
-                )
+@Composable
+private fun CarouselIndicators(
+    heroCardsCount: Int,
+    pagerState: PagerState,
+    modifier: Modifier = Modifier
+) {
+    val currentPage = pagerState.currentPage
+    val currentPageList = listOf(
+        (currentPage - 1).coerceAtLeast(0),
+        currentPage,
+        (currentPage + 1).coerceAtMost(pagerState.pageCount - 1)
+    )
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap)
+    ) {
+        for (index in 0 until heroCardsCount) {
+            val page = currentPageList.firstOrNull { it % heroCardsCount == index }
+            val fraction = if (page == null) {
+                0f
+            } else {
+                val pageOffset = (currentPage - page) + pagerState.currentPageOffsetFraction
+                (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
             }
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(
+                        MaterialTheme.colorScheme.onBackground
+                            .copy(alpha = 0.35f + 0.57f * fraction)
+                    )
+                    .width(8.dp + 24.dp * fraction)
+                    .height(8.dp)
+            )
         }
     }
 }

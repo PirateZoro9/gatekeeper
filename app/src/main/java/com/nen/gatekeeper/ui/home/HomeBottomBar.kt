@@ -42,15 +42,15 @@ fun HomeBottomBar(
     isScrolling: Boolean,
     modifier: Modifier
 ) {
-    val scale by animateFloatAsState(
+    val scale = animateFloatAsState(
         targetValue = if (isScrolling) 0.85f else 1f,
         label = "bottomBarScale"
     )
     Box(
         modifier = modifier
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                scaleX = scale.value
+                scaleY = scale.value
             }
             .navigationBarsPadding()
             .fillMaxWidth()

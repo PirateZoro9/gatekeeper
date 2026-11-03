@@ -50,6 +50,9 @@ import androidx.compose.ui.unit.sp
 import com.nen.gatekeeper.data.model.Episode
 import com.nen.gatekeeper.data.model.Season
 import com.nen.gatekeeper.ui.components.AppImage
+import com.nen.gatekeeper.ui.theme.Accent
+import com.nen.gatekeeper.ui.theme.AppShapes
+import com.nen.gatekeeper.ui.theme.AppSpacing
 
 // Series section with seasons and episodes
 @Composable
@@ -59,7 +62,7 @@ fun DetailSeriesSection(
     posterUrl: String?,
     onEpisodeClick: (episode: Episode, seasonBadge: String) -> Unit
 ) {
-    var selectedSeasonNumber by rememberSaveable {
+    var selectedSeasonNumber by rememberSaveable(seasons) {
         mutableStateOf(
             seasons.firstOrNull()?.seasonNumber ?: 1
         )
@@ -68,9 +71,6 @@ fun DetailSeriesSection(
         it.seasonNumber == selectedSeasonNumber
     }
     val episodes = selectedSeason?.episodes.orEmpty()
-    val episodeListState = rememberSaveable(selectedSeasonNumber, saver = LazyListState.Saver) {
-        LazyListState()
-    }
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
@@ -92,18 +92,18 @@ fun DetailSeriesSection(
             Spacer(modifier = Modifier.weight(1f))
             Box(
                 modifier = Modifier
-                    .clip(shape = RoundedCornerShape(6.dp))
-                    .background(Color(0xFFFF5C39).copy(alpha = 0.15f))
+                    .clip(shape = AppShapes.badge)
+                    .background(Accent.copy(alpha = 0.15f))
                     .border(
                         width = 1.dp,
-                        color = Color(0xFFFF5C39).copy(alpha = 0.30f),
-                        shape = RoundedCornerShape(6.dp)
+                        color = Accent.copy(alpha = 0.30f),
+                        shape = AppShapes.badge
                     )
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
                     text = "${episodes.size} Episodes Available",
-                    color = Color(0xFFFF5C39),
+                    color = Accent,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -113,21 +113,21 @@ fun DetailSeriesSection(
         // Season selector chips
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap),
             contentPadding = PaddingValues(horizontal = 16.dp),
         ) {
-            items(items = seasons) { season ->
+            items(items = seasons, key = { it.seasonNumber }) { season ->
                 val isSelected = selectedSeason == season
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
+                        .clip(CircleShape)
                         .background(
                             color = if (isSelected) Color.White else Color.Black
                         )
                         .border(
                             width = 1.dp,
                             color = if (isSelected) Color.Transparent else Color.White.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(50)
+                            shape = CircleShape
                         )
                         .clickable {
                             selectedSeasonNumber = season.seasonNumber
@@ -165,16 +165,20 @@ fun DetailSeriesSection(
                     it.seasonNumber == targetSeasonNumber
                 }
                 val currentEpisodes = currentSeason?.episodes.orEmpty()
+                val seasonListState =
+                    rememberSaveable(targetSeasonNumber, saver = LazyListState.Saver) {
+                        LazyListState()
+                    }
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 50.dp),
-                    state = episodeListState
+                    state = seasonListState
                 ) {
-                    items(items = currentEpisodes) { ep ->
+                    items(items = currentEpisodes, key = { it.episodeNumber }) { ep ->
                         EpisodeCard(
-                            isSpecial = selectedSeason?.isSpecial == true,
-                            seasonNumber = selectedSeason?.seasonNumber,
+                            isSpecial = currentSeason?.isSpecial == true,
+                            seasonNumber = currentSeason?.seasonNumber,
                             episode = ep,
                             posterUrl = posterUrl,
                             onEpisodeClick = onEpisodeClick
@@ -244,18 +248,19 @@ fun EpisodeCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(AppShapes.badge)
                         .background(color = Color.White.copy(alpha = 0.05f))
                         .border(
                             1.dp,
                             Color.White.copy(alpha = 0.25f),
-                            RoundedCornerShape(4.dp)
+                            AppShapes.badge
                         )
                         .padding(horizontal = 5.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = seasonBadge,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        color = Color.White
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))

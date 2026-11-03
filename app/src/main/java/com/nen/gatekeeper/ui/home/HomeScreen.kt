@@ -2,16 +2,18 @@ package com.nen.gatekeeper.ui.home
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -30,7 +32,11 @@ fun HomeScreen(
     onCardClick: (cardUrl: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    Column(modifier = modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(color = MaterialTheme.colorScheme.background)
+    ) {
         Crossfade(targetState = uiState, animationSpec = tween(500)) { state ->
             when (state) {
                 is HomeUiState.Error -> {
@@ -64,7 +70,9 @@ fun HomeContent(
     contentPadding: PaddingValues,
     onCardClick: (cardUrl: String) -> Unit
 ) {
-    val heroCards = rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
+    val heroCards = remember(rows) {
+        rows.firstOrNull()?.rowCards?.take(5) ?: emptyList()
+    }
     val listState = rememberLazyListState()
     val isScrolling = listState.isScrollInProgress
     Box(modifier = Modifier.fillMaxSize()) {
@@ -74,7 +82,7 @@ fun HomeContent(
             verticalArrangement = Arrangement.spacedBy(AppSpacing.medium)
         ) {
             // Hero banner
-            item(contentType = "Hero") {
+            item(key = "hero_carousel", contentType = "Hero") {
                 HeroCarousel(
                     heroCards = heroCards,
                     onCardClick = onCardClick

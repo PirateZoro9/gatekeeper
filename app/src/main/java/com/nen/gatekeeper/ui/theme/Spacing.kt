@@ -1,5 +1,6 @@
 package com.nen.gatekeeper.ui.theme
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 
 object AppSpacing {
@@ -17,6 +18,13 @@ object AppSizes {
 }
 
 object AppRadius {
+    val badge = 4.dp
     val card = 8.dp
     val hero = 12.dp
+}
+
+object AppShapes {
+    val badge = RoundedCornerShape(AppRadius.badge)
+    val inner = RoundedCornerShape(AppRadius.card)
+    val card = RoundedCornerShape(AppRadius.hero)
 }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nen.gatekeeper.data.repo.MediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -21,8 +22,10 @@ class HomeViewModel @Inject constructor(
         loadHome()
     }
 
+    private var homeJob: Job? = null
     fun loadHome() {
-        viewModelScope.launch {
+        homeJob?.cancel()
+        homeJob = viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
             val result = mediaRepository.getHome()
             result.fold(
