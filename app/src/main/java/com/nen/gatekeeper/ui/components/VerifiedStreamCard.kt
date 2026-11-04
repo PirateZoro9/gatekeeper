@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nen.gatekeeper.data.model.PlayerMedia
 import com.nen.gatekeeper.data.model.VerifiedStreamData
 import com.nen.gatekeeper.ui.theme.AppShapes
 import com.nen.gatekeeper.ui.theme.AppSpacing
@@ -40,9 +41,11 @@ import com.nen.gatekeeper.ui.theme.StreamVerified
 
 @Composable
 fun RecommendedStreamCard(
+    mediaName: String,
     stream: VerifiedStreamData,
+    allStreams: List<VerifiedStreamData>,
     modifier: Modifier = Modifier,
-    onPlayClick: () -> Unit
+    onPlayClick: (PlayerMedia) -> Unit
 ) {
     Box(
         modifier = modifier
@@ -124,7 +127,14 @@ fun RecommendedStreamCard(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Button(
-                    onClick = onPlayClick,
+                    onClick = {
+                        val media = PlayerMedia(
+                            name = mediaName,
+                            currentStream = stream,
+                            allStreams = allStreams
+                        )
+                        onPlayClick(media)
+                    },
                     shape = AppShapes.inner,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = StreamVerified,
@@ -154,9 +164,11 @@ fun RecommendedStreamCard(
 
 @Composable
 fun MirrorStreamCard(
+    mediaName: String,
     stream: VerifiedStreamData,
     modifier: Modifier = Modifier,
-    onPlayClick: () -> Unit
+    allStreams: List<VerifiedStreamData>,
+    onPlayClick: (PlayerMedia) -> Unit
 ) {
     Box(
         modifier = modifier
@@ -202,7 +214,14 @@ fun MirrorStreamCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
-                    onClick = onPlayClick,
+                    onClick = {
+                        val media = PlayerMedia(
+                            name = mediaName,
+                            currentStream = stream,
+                            allStreams = allStreams
+                        )
+                        onPlayClick(media)
+                    },
                     shape = AppShapes.badge,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = StreamVerified.copy(alpha = 0.15f),
@@ -235,8 +254,10 @@ private fun SeekBadge(
     isSeekSupported: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val bgColor = if (isSeekSupported) StreamVerified.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
-    val borderColor = if (isSeekSupported) StreamVerified.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.10f)
+    val bgColor =
+        if (isSeekSupported) StreamVerified.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
+    val borderColor =
+        if (isSeekSupported) StreamVerified.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.10f)
     val textColor = if (isSeekSupported) StreamVerified else Color.White.copy(alpha = 0.40f)
 
     Box(

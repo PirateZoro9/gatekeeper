@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nen.gatekeeper.data.model.MediaDetails
+import com.nen.gatekeeper.data.model.PlayerMedia
 import com.nen.gatekeeper.data.model.StreamLink
 import com.nen.gatekeeper.ui.components.EmptyState
 import com.nen.gatekeeper.ui.components.ErrorState
@@ -30,7 +31,8 @@ import com.nen.gatekeeper.ui.theme.AppSpacing
 fun DetailScreen(
     viewModel: DetailViewModel,
     onBackClick: () -> Unit,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
+    onPlayClick: (PlayerMedia) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val streamState by viewModel.streamState.collectAsStateWithLifecycle()
@@ -56,7 +58,10 @@ fun DetailScreen(
                             contentPadding = contentPadding,
                             streamState = streamState,
                             onVerifyClick = { urls -> viewModel.verifyStreams(urls) },
-                            onResetVerifier = { viewModel.resetStreamVerifier() }
+                            onResetVerifier = { viewModel.resetStreamVerifier() },
+                            onPlayClick = { media ->
+                                onPlayClick(media)
+                            }
                         )
                     }
 
@@ -80,7 +85,8 @@ fun DetailContent(
     contentPadding: PaddingValues,
     streamState: StreamUiState,
     onVerifyClick: (List<String>) -> Unit,
-    onResetVerifier: () -> Unit
+    onResetVerifier: () -> Unit,
+    onPlayClick: (PlayerMedia) -> Unit
 ) {
     var showStreamSheet by remember {
         mutableStateOf(false)
@@ -155,6 +161,9 @@ fun DetailContent(
         onVerifyClick = { urls ->
             onVerifyClick(urls)
         },
-        streamUIState = streamState
+        streamUIState = streamState,
+        onPlayClick = { media ->
+            onPlayClick(media)
+        }
     )
 }

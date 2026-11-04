@@ -1,5 +1,7 @@
 package com.nen.gatekeeper.data.model
 
+import kotlinx.serialization.Serializable
+
 // Represents a media card on home or catalog pages
 data class CardDetails(
     val title: String,
@@ -62,6 +64,7 @@ data class Episode(
     val episodeLinks: List<StreamLink> = emptyList()
 )
 
+@Serializable
 data class VerifiedStreamData(
     val name: String,
     val url: String,
@@ -70,4 +73,11 @@ data class VerifiedStreamData(
     val headers: Map<String, String> = emptyMap(),
     val verifiedSize: String? = null,
     val totalBytes: Long? = null
+)
+
+@Serializable
+data class PlayerMedia(
+    val name: String,
+    val currentStream: VerifiedStreamData,
+    val allStreams: List<VerifiedStreamData> = emptyList()
 )

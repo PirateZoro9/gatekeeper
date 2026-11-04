@@ -28,7 +28,6 @@ import com.nen.gatekeeper.ui.theme.StreamOrange
 fun StreamCard(
     streamInfo: StreamLink,
     modifier: Modifier = Modifier,
-    onPlayClick: () -> Unit = {},
 ) {
     Box(
         modifier = modifier

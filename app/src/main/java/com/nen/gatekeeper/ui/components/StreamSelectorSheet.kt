@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nen.gatekeeper.data.model.PlayerMedia
 import com.nen.gatekeeper.data.model.StreamLink
 import com.nen.gatekeeper.ui.detail.StreamUiState
 import com.nen.gatekeeper.ui.theme.AppShapes
@@ -72,12 +73,13 @@ import kotlinx.coroutines.launch
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun StreamSelectorSheet(
+    streamUIState: StreamUiState,
     title: String,
     streamLink: List<StreamLink>,
     isOpen: Boolean,
     onDismiss: () -> Unit,
+    onPlayClick: (PlayerMedia) -> Unit,
     onVerifyClick: (List<String>) -> Unit,
-    streamUIState: StreamUiState
 ) {
     // Quality chip filter state
     var selectedQuality by rememberSaveable {
@@ -209,16 +211,24 @@ fun StreamSelectorSheet(
                             recommendedStream?.let {
                                 item(key = it.url) {
                                     RecommendedStreamCard(
+                                        mediaName = title,
                                         stream = it,
-                                        onPlayClick = {}
+                                        allStreams = streamUIState.streams,
+                                        onPlayClick = { media ->
+                                            onPlayClick(media)
+                                        }
                                     )
                                 }
                             }
 
                             items(items = otherStreams.take(2), key = { it.url }) {
                                 MirrorStreamCard(
+                                    mediaName = title,
                                     stream = it,
-                                    onPlayClick = {}
+                                    allStreams = streamUIState.streams,
+                                    onPlayClick = { media ->
+                                        onPlayClick(media)
+                                    }
                                 )
                             }
 
@@ -239,8 +249,12 @@ fun StreamSelectorSheet(
                                     }
                                     items(items = otherStreams.drop(2), key = { it.url }) {
                                         MirrorStreamCard(
+                                            mediaName = title,
                                             stream = it,
-                                            onPlayClick = {}
+                                            allStreams = streamUIState.streams,
+                                            onPlayClick = { media ->
+                                                onPlayClick(media)
+                                            }
                                         )
                                     }
                                 }

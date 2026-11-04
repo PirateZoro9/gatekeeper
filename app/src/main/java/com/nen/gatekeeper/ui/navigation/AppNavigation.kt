@@ -17,15 +17,22 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.nen.gatekeeper.Detail
 import com.nen.gatekeeper.Home
+import com.nen.gatekeeper.Onboard
+import com.nen.gatekeeper.Player
+import com.nen.gatekeeper.data.local.AppPreferences
 import com.nen.gatekeeper.ui.detail.DetailScreen
 import com.nen.gatekeeper.ui.detail.DetailViewModel
 import com.nen.gatekeeper.ui.home.HomeScreen
 import com.nen.gatekeeper.ui.home.HomeViewModel
+import com.nen.gatekeeper.ui.onboarding.OnboardingScreen
+import com.nen.gatekeeper.ui.player.PlayerScreen
+import com.nen.gatekeeper.ui.player.PlayerViewModel
 
 @Composable
 fun AppNavigation(
     backStack: NavBackStack<NavKey> = rememberNavBackStack(Home),
     innerPadding: PaddingValues,
+    appPreferences: AppPreferences,
     modifier: Modifier = Modifier
 ) {
     val fadeTransition =
@@ -42,6 +49,16 @@ fun AppNavigation(
             rememberViewModelStoreNavEntryDecorator()
         ),
         entryProvider = entryProvider {
+            entry<Onboard> {
+                OnboardingScreen(
+                    contentPadding = innerPadding,
+                    onFinish = {
+                        appPreferences.setOnboardingCompleted(true)
+                        backStack.clear()
+                        backStack.add(Home)
+                    }
+                )
+            }
             entry<Home> {
                 val viewModel: HomeViewModel = hiltViewModel()
                 HomeScreen(
@@ -65,7 +82,23 @@ fun AppNavigation(
                     contentPadding = innerPadding,
                     onBackClick = {
                         backStack.removeLastOrNull()
+                    },
+                    onPlayClick = { media ->
+                        if (backStack.lastOrNull() !is Player) {
+                            backStack.add(Player(media))
+                        }
                     }
+                )
+            }
+            entry<Player> { playerKey ->
+                val viewModel: PlayerViewModel = hiltViewModel(
+                    creationCallback = { factory: PlayerViewModel.Factory ->
+                        factory.create(playerKey.streamingData)
+                    }
+                )
+                PlayerScreen(
+                    viewModel = viewModel,
+                    onBackClick = { backStack.removeLastOrNull() }
                 )
             }
         }
