@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Movie
@@ -41,12 +42,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -113,6 +111,7 @@ fun OnboardingScreen(
                 3 -> ReadyStep()
             }
         }
+
         Button(
             onClick = {
                 if (currentStep < 3) {
@@ -223,7 +222,7 @@ private fun WelcomeStep() {
         Spacer(modifier = Modifier.height(10.dp))
 
         Text(
-            text = "A private, open-source media shell. Clean, and completely empty out of the box.",
+            text = "Your personal stream engine & media player.",
             color = Color(0xFF94A3B8),
             style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
             textAlign = TextAlign.Center,
@@ -250,15 +249,9 @@ private fun WelcomeStep() {
                     modifier = Modifier.padding(end = 10.dp)
                 )
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFFE2E8F0))) {
-                            append("Zero bundled content: ")
-                        }
-                        withStyle(SpanStyle(color = Color(0xFF94A3B8))) {
-                            append("GateKeeper provides the engine and player — you choose what extension repositories to link.")
-                        }
-                    },
-                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp)
+                    text = "This app is completely empty. It doesn't host or provide any movies or series. You bring your own sources by adding extensions.",
+                    color = Color(0xFF94A3B8),
+                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp)
                 )
             }
         }
@@ -267,7 +260,149 @@ private fun WelcomeStep() {
 
 @Composable
 private fun HowItWorksStep() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = Color(0xFF0F172A).copy(alpha = 0.75f),
+            border = BorderStroke(1.dp, Color(0xFF1E293B)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "HOW GATEKEEPER WORKS",
+                    color = Color(0xFF64748B),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                )
 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF080B12).copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+                        .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(14.dp))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .background(Color(0xFF3B82F6).copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "📦", fontSize = 16.sp)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Community Repositories",
+                            color = Color(0xFFF1F5F9),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Add any CS3 extension repo URL",
+                            color = Color(0xFF94A3B8),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF080B12).copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+                        .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(14.dp))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .background(Color(0xFF10B981).copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "⚡", fontSize = 16.sp)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Live Stream Verifier",
+                            color = Color(0xFFF1F5F9),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Tests 206 seekability before play",
+                            color = Color(0xFF94A3B8),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF080B12).copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+                        .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(14.dp))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .background(Color(0xFF06B6D4).copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "🎬", fontSize = 16.sp)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Hardware Playback",
+                            color = Color(0xFFF1F5F9),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Media3 ExoPlayer + Smart Caching",
+                            color = Color(0xFF94A3B8),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "You're in Total Control",
+            color = Color.White,
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.5).sp
+            ),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "No tracking, no locked catalogs. GateKeeper adapts to whatever sources you install.",
+            color = Color(0xFF94A3B8),
+            style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+    }
 }
 
 @Composable
