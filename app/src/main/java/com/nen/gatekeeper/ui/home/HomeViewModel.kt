@@ -37,9 +37,9 @@ class HomeViewModel @Inject constructor(
                         _uiState.value = HomeUiState.Empty
                     }
                 },
-                onFailure = {
+                onFailure = { error ->
                     _uiState.value = HomeUiState.Error(
-                        "Failed to load content. Please try again later."
+                        error.localizedMessage ?: "Failed to load content. Please try again later."
                     )
                 }
             )

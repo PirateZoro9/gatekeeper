@@ -5,12 +5,12 @@ import com.nen.gatekeeper.data.model.MediaDetails
 import com.nen.gatekeeper.data.model.StreamLink
 
 // Interface for media provider plugins
-interface MainApi {
-    val name: String
-    val mainUrl: String
-    val lang: String
+abstract class MainApi() {
+    abstract val name: String
+    abstract val mainUrl: String
+    open val lang: String = "en"
 
-    suspend fun getHome(): List<HomeRow>
-    suspend fun getDetails(url: String): MediaDetails
-    suspend fun loadStreams(dataUrl: String): List<StreamLink> = emptyList()
+    abstract suspend fun getHome(): List<HomeRow>
+    abstract suspend fun getDetails(url: String): MediaDetails
+    open suspend fun loadStreams(dataUrl: String): List<StreamLink> = emptyList()
 }

@@ -52,6 +52,7 @@ class PluginRepository @Inject constructor(
         Dispatchers.IO
     ) {
         try {
+
             val pluginsDir = File(context.filesDir, "plugins")
             if (!pluginsDir.exists()) {
                 pluginsDir.mkdirs()
@@ -65,10 +66,83 @@ class PluginRepository @Inject constructor(
                 if (!response.isSuccessful) {
                     return@withContext Result.failure(Exception("Download failed: ${response.code}"))
                 }
-                Result.success()
+                val bytes = response.body?.bytes()
+                    ?: return@withContext Result.failure(Exception("Download body is empty"))
+                file.writeBytes(bytes)
+                val installedPlugins = InstalledPlugin(
+                    internalName = plugin.internalName,
+                    name = plugin.name,
+                    version = plugin.version,
+                    localFilePath = file.absolutePath,
+                    iconUrl = plugin.iconUrl,
+                    isEnabled = true
+                )
+                saveInstalledPlugin(installedPlugins)
+                Result.success(installedPlugins)
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    fun getSavedRepos(): Set<String> = appPreferences.getSavedRepos()
+
+    fun addRepo(url: String) {
+        val current = appPreferences.getSavedRepos().toMutableSet()
+        current.add(url)
+        appPreferences.setSavedRepos(current)
+    }
+
+    fun removeRepo(url: String) {
+        val current = appPreferences.getSavedRepos().toMutableSet()
+        current.remove(url)
+        appPreferences.setSavedRepos(current)
+    }
+
+    fun getInstalledPlugins(): List<InstalledPlugin> {
+        val rawJson = appPreferences.getInstalledPluginsJson() ?: return emptyList()
+        return try {
+            json.decodeFromString<List<InstalledPlugin>>(rawJson)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveInstalledPlugin(plugin: InstalledPlugin) {
+        val currentList = getInstalledPlugins().toMutableList()
+        val existingIndex = currentList.indexOfFirst { it.internalName == plugin.internalName }
+        if (existingIndex != -1) {
+            currentList[existingIndex] = plugin
+        } else {
+            currentList.add(plugin)
+        }
+        savePluginsList(currentList)
+    }
+
+    fun togglePlugin(internalName: String, isEnabled: Boolean) {
+        val currentList = getInstalledPlugins().toMutableList()
+        val existingIndex = currentList.indexOfFirst { it.internalName == internalName }
+        if (existingIndex != -1) {
+            currentList[existingIndex] = currentList[existingIndex].copy(isEnabled = isEnabled)
+            savePluginsList(currentList)
+        }
+    }
+
+    fun deletePlugin(plugin: InstalledPlugin) {
+        val currentList = getInstalledPlugins().toMutableList()
+        val existingIndex = currentList.indexOfFirst { it.internalName == plugin.internalName }
+        if (existingIndex != -1) {
+            currentList.removeAt(existingIndex)
+            val file = File(plugin.localFilePath)
+            if (file.exists()) {
+                file.delete()
+            }
+            savePluginsList(currentList)
+        }
+    }
+
+    private fun savePluginsList(list: List<InstalledPlugin>) {
+        val rawJson = json.encodeToString(list)
+        appPreferences.setInstalledPluginsJson(rawJson)
     }
 }
